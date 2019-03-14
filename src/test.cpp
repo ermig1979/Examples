@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
     buf_t a(M*K), b(K*N), c(M*N);
     init(a);
     init(b);
-    gemm_v4(M, N, K, a.p, b.p, c.p);
+    gemm_v7(M, N, K, a.p, b.p, c.p);
 
     if (L <= 0 && !test(gemm_v0, "gemm_v0", a, b, c)) return 1;
     if (L <= 1 && !test(gemm_v1, "gemm_v1", a, b, c)) return 1;

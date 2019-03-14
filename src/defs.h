@@ -29,6 +29,6 @@ struct buf_t
     float * p;
     int n;
 
-    buf_t(int size) : n(size), p((float*)_mm_malloc(size * 4, 32)) {}
+    buf_t(int size) : n(size), p((float*)_mm_malloc(size * 4, 64)) {}
     ~buf_t() { _mm_free(p); }
 };
