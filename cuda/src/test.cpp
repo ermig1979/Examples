@@ -1,26 +1,59 @@
 #include "defs.h"
 
-#ifdef _MSC_VER
-#define NOMINMAX
-#include <windows.h>
-
-__forceinline double time()
+struct cpu_buf_t
 {
-    LARGE_INTEGER counter, frequency;
-    QueryPerformanceCounter(&counter);
-    QueryPerformanceFrequency(&frequency);
-    return double(counter.QuadPart) / double(frequency.QuadPart);
-}
-#else
-#include <sys/time.h>
+    float* p;
+    int n;
 
-inline __attribute__((always_inline)) double time()
+    cpu_buf_t(int size)
+        : n(size)
+        , p((float*)_mm_malloc(size * 4, 64))
+    {
+    }
+
+    ~cpu_buf_t()
+    {
+        _mm_free(p);
+    }
+};
+
+struct gpu_buf_t
 {
-    timeval t1;
-    gettimeofday(&t1, NULL);
-    return t1.tv_sec + t1.tv_usec * 0.000001;
+    float* p;
+    int n;
+
+    gpu_buf_t(int size)
+        : n(size)
+        , p(0)
+    {
+        cudaError_t error = cudaMalloc(&p, n * sizeof(float));
+        assert(error == cudaSuccess);
+    }
+
+    ~gpu_buf_t()
+    {
+        if (p)
+        {
+            cudaError_t error = cudaFree(p);
+            assert(error == cudaSuccess);
+            p = 0;
+        }
+    }
+};
+
+void copy(const cpu_buf_t& src, gpu_buf_t& dst)
+{
+    assert(src.n == dst.n);
+    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyHostToDevice);
+    assert(error == cudaSuccess);
 }
-#endif
+
+void copy(const gpu_buf_t& src, cpu_buf_t& dst)
+{
+    assert(src.n == dst.n);
+    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyDeviceToHost);
+    assert(error == cudaSuccess);
+}
 
 void init(cpu_buf_t & buf)
 {
@@ -55,20 +88,6 @@ bool check(const cpu_buf_t & control, const cpu_buf_t & current, const std::stri
     return true;
 }
 
-void copy(const cpu_buf_t & src, gpu_buf_t & dst)
-{
-    assert(src.n == dst.n);
-    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n*sizeof(float), cudaMemcpyHostToDevice);
-    assert(error == cudaSuccess);
-}
-
-void copy(const gpu_buf_t & src, cpu_buf_t & dst)
-{
-    assert(src.n == dst.n);
-    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n*sizeof(float), cudaMemcpyDeviceToHost);
-    assert(error == cudaSuccess);
-}
-
 struct opt_t
 {
     int M, N, K, L;
@@ -76,18 +95,31 @@ struct opt_t
 
     opt_t(int argc, char* argv[])
     {
-        const int S = 1152;
+        const int S = 1024;
         M = S;
         N = S;
         K = S;
         L = 0;
         T = 1000.0f;
-        if (argc > 1) M = atoi(argv[1]);
-        if (argc > 2) N = atoi(argv[2]);
-        if (argc > 3) K = atoi(argv[3]);
-        if (argc > 4) L = atoi(argv[4]);
+        if (argc == 2) M = atoi(argv[1]), N = atoi(argv[1]), K = atoi(argv[1]);
+        else
+        {
+            if (argc > 1) M = atoi(argv[1]);
+            if (argc > 2) N = atoi(argv[2]);
+            if (argc > 3) K = atoi(argv[3]);
+            if (argc > 4) L = atoi(argv[4]);
+        }
     }
 };
+
+void control(gemm_t gemm, const opt_t& o, const cpu_buf_t& a, const cpu_buf_t& b, cpu_buf_t & c)
+{
+    gpu_buf_t _a(o.M * o.K), _b(o.K * o.N), _c(o.M * o.N);
+    copy(a, _a);
+    copy(b, _b);
+    gemm(o.M, o.N, o.K, _a.p, _b.p, _c.p);
+    copy(_c, c);
+}
 
 bool test(gemm_t gemm, const std::string & desc, const opt_t & o,
         const cpu_buf_t & a, const cpu_buf_t & b, const cpu_buf_t & control)
@@ -101,20 +133,21 @@ bool test(gemm_t gemm, const std::string & desc, const opt_t & o,
     cudaEvent_t start, stop;
     assert(cudaEventCreate(&start) == cudaSuccess);
     assert(cudaEventCreate(&stop) == cudaSuccess);
-
     float t = 0, ms = 0;
     int n = 0;
     while(t < o.T)
     {
         assert(cudaEventRecord(start, NULL) == cudaSuccess);
-        gemm(o.M, o.N, o.K, _a.p, _b.p, _c.p);
+        n += gemm(o.M, o.N, o.K, _a.p, _b.p, _c.p);
         assert(cudaEventRecord(stop, NULL) == cudaSuccess);
         assert(cudaEventSynchronize(stop) == cudaSuccess);
         assert(cudaEventElapsedTime(&ms, start, stop) == cudaSuccess);
         t += ms;
-        n++;
         std::cout << std::setprecision(1) << std::fixed << t/o.T*100.0f << "%\r" << std::flush;
     }
+    assert(cudaEventDestroy(start) == cudaSuccess);
+    assert(cudaEventDestroy(stop) == cudaSuccess);
+
     double gflops = 2*double(o.M*o.N)*o.K*n / (t / 1000.0f) / (1000 * 1000 * 1000);
 
     cpu_buf_t current(o.M*o.N);
@@ -126,7 +159,7 @@ bool test(gemm_t gemm, const std::string & desc, const opt_t & o,
     return check(control, current, desc);
 }
 
-void gemm_cpu(int M, int N, int K, const float * A, const float * B, float * C)
+int gemm_cpu(int M, int N, int K, const float * A, const float * B, float * C)
 {
     for (int i = 0; i < M; ++i)
     {
@@ -141,15 +174,34 @@ void gemm_cpu(int M, int N, int K, const float * A, const float * B, float * C)
                 c[j] += a * b[j];
         }
     }
+    return 1;
+}
+
+void print_info(const opt_t & o)
+{
+    int deviceCount;
+    cudaGetDeviceCount(&deviceCount);
+    for (int device = 0; device < deviceCount; ++device)
+    {
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, device);
+        printf("Device %d has compute capability %d.%d.\n", device, deviceProp.major, deviceProp.minor);
+    }
 }
 
 int main(int argc, char* argv[])
 {
     opt_t o(argc, argv);
+    print_info(o);
+
     cpu_buf_t a(o.M*o.K), b(o.K*o.N), c(o.M*o.N);
     init(a);
     init(b);
-    gemm_cpu(o.M, o.N, o.K, a.p, b.p, c.p);
+    control(gemm_cublas, o, a, b, c);
 
+    if (o.L <= 0 && !test(gemm_cublas, "gemm_cublas", o, a, b, c)) return 1;
     if (o.L <= 0 && !test(gemm_gpu_v0, "gemm_gpu_v0", o, a, b, c)) return 1;
+    if (o.L <= 1 && !test(gemm_gpu_v1, "gemm_gpu_v1", o, a, b, c)) return 1;
+    if (o.L <= 2 && !test(gemm_gpu_v2, "gemm_gpu_v2", o, a, b, c)) return 1;
+    //if (o.L <= 3 && !test(gemm_gpu_v3, "gemm_gpu_v3", o, a, b, c)) return 1;
 }

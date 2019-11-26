@@ -13,11 +13,14 @@ __global__ void gemm_v1(int M, int N, int K, const float * A, const float * B, f
     }
 }
 
-void gemm_gpu_v1(int M, int N, int K, const float * A, const float * B, float * C)
+int gemm_gpu_v1(int M, int N, int K, const float * A, const float * B, float * C)
 {
-    const int n = 16;
-    dim3 grid(n, n);
-    dim3 block((N + n - 1)/n, (M + n - 1)/n);
-    gemm_v1<<<block, grid>>>(M, N, K, A, B, C);
+    const int S = 16;
+    dim3 grid(S, S);
+    dim3 block((N + S - 1)/S, (M + S - 1)/S);
+    const int n = repeats(M, N, K, 0.050);
+    for (int i = 0; i < n; ++i)
+        gemm_v1<<<block, grid>>>(M, N, K, A, B, C);
     assert(cudaGetLastError() == cudaSuccess);
+    return n;
 }
