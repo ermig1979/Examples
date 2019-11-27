@@ -203,5 +203,5 @@ int main(int argc, char* argv[])
     if (o.L <= 0 && !test(gemm_gpu_v0, "gemm_gpu_v0", o, a, b, c)) return 1;
     if (o.L <= 1 && !test(gemm_gpu_v1, "gemm_gpu_v1", o, a, b, c)) return 1;
     if (o.L <= 2 && !test(gemm_gpu_v2, "gemm_gpu_v2", o, a, b, c)) return 1;
-    //if (o.L <= 3 && !test(gemm_gpu_v3, "gemm_gpu_v3", o, a, b, c)) return 1;
+    if (o.L <= 3 && !test(gemm_gpu_v3, "gemm_gpu_v3", o, a, b, c)) return 1;
 }

@@ -15,9 +15,9 @@ __global__ void gemm_v1(int M, int N, int K, const float * A, const float * B, f
 
 int gemm_gpu_v1(int M, int N, int K, const float * A, const float * B, float * C)
 {
-    const int S = 16;
-    dim3 grid(S, S);
-    dim3 block((N + S - 1)/S, (M + S - 1)/S);
+    const int TS = 16;
+    dim3 grid(TS, TS);
+    dim3 block((N + TS - 1)/ TS, (M + TS - 1)/ TS);
     const int n = repeats(M, N, K, 0.050);
     for (int i = 0; i < n; ++i)
         gemm_v1<<<block, grid>>>(M, N, K, A, B, C);

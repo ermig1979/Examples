@@ -21,4 +21,4 @@ int gemm_cublas(int M, int N, int K, const float * A, const float * B, float * C
 int gemm_gpu_v0(int M, int N, int K, const float * A, const float * B, float * C);
 int gemm_gpu_v1(int M, int N, int K, const float * A, const float * B, float * C);
 int gemm_gpu_v2(int M, int N, int K, const float * A, const float * B, float * C);
-//int gemm_gpu_v3(int M, int N, int K, const float * A, const float * B, float * C);
+int gemm_gpu_v3(int M, int N, int K, const float * A, const float * B, float * C);
