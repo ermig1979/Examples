@@ -17,30 +17,6 @@ struct cpu_buf_t
     }
 };
 
-struct gpu_buf_t
-{
-    float* p;
-    int n;
-
-    gpu_buf_t(int size)
-        : n(size)
-        , p(0)
-    {
-        cudaError_t error = cudaMalloc(&p, n * sizeof(float));
-        assert(error == cudaSuccess);
-    }
-
-    ~gpu_buf_t()
-    {
-        if (p)
-        {
-            cudaError_t error = cudaFree(p);
-            assert(error == cudaSuccess);
-            p = 0;
-        }
-    }
-};
-
 void copy(const cpu_buf_t& src, gpu_buf_t& dst)
 {
     assert(src.n == dst.n);
@@ -199,9 +175,15 @@ int main(int argc, char* argv[])
     init(b);
     control(gemm_cublas, o, a, b, c);
 
-    if (o.L <= 0 && !test(gemm_cublas, "gemm_cublas", o, a, b, c)) return 1;
-    if (o.L <= 0 && !test(gemm_gpu_v0, "gemm_gpu_v0", o, a, b, c)) return 1;
-    if (o.L <= 1 && !test(gemm_gpu_v1, "gemm_gpu_v1", o, a, b, c)) return 1;
-    if (o.L <= 2 && !test(gemm_gpu_v2, "gemm_gpu_v2", o, a, b, c)) return 1;
-    if (o.L <= 3 && !test(gemm_gpu_v3, "gemm_gpu_v3", o, a, b, c)) return 1;
+    if (o.L <= 0 && !test(gemm_cublas, " gemm_cublas", o, a, b, c)) return 1;
+    if (o.L <= 0 && !test(gemm_gpu_v0a, "gemm_gpu_v0a", o, a, b, c)) return 1;
+    if (o.L <= 1 && !test(gemm_gpu_v1a, "gemm_gpu_v1a", o, a, b, c)) return 1;
+    if (o.L <= 2 && !test(gemm_gpu_v2a, "gemm_gpu_v2a", o, a, b, c)) return 1;
+    if (o.L <= 3 && !test(gemm_gpu_v3a, "gemm_gpu_v3a", o, a, b, c)) return 1;
+    if (o.L <= 4 && !test(gemm_gpu_v4a, "gemm_gpu_v4a", o, a, b, c)) return 1;
+    if (o.L <= 4 && !test(gemm_gpu_v4b, "gemm_gpu_v4b", o, a, b, c)) return 1;
+    if (o.L <= 4 && !test(gemm_gpu_v4c, "gemm_gpu_v4c", o, a, b, c)) return 1;
+    if (o.L <= 5 && !test(gemm_gpu_v5a, "gemm_gpu_v5a", o, a, b, c)) return 1;
+    if (o.L <= 5 && !test(gemm_gpu_v5b, "gemm_gpu_v5b", o, a, b, c)) return 1;
+    if (o.L <= 5 && !test(gemm_gpu_v5c, "gemm_gpu_v5c", o, a, b, c)) return 1;
 }

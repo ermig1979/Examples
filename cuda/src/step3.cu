@@ -4,7 +4,7 @@ const int TS = 32;
 const int WPT = 8;
 const int PTS = TS / WPT;
 
-__global__ void gemm_v3(int M, int N, int K, const float* A, const float* B, float* C)
+__global__ void gemm_v3a(int M, int N, int K, const float* A, const float* B, float* C)
 {
     int Ma = M / TS * TS;
     int Na = N / TS * TS;
@@ -30,8 +30,11 @@ __global__ void gemm_v3(int M, int N, int K, const float* A, const float* B, flo
                 }
                 __syncthreads();
                 for (int k = 0; k < TS; ++k)
+                {
+                    float b = sB[k][threadIdx.x];
                     for (int w = 0; w < WPT; w++)
-                        c[w] += sA[threadIdx.y + w * PTS][k] * sB[k][threadIdx.x];
+                        c[w] += sA[threadIdx.y + w * PTS][k] * b;
+                }
                 __syncthreads();
             }
         }
@@ -40,13 +43,13 @@ __global__ void gemm_v3(int M, int N, int K, const float* A, const float* B, flo
     }
 }
 
-int gemm_gpu_v3(int M, int N, int K, const float * A, const float * B, float * C)
+int gemm_gpu_v3a(int M, int N, int K, const float * A, const float * B, float * C)
 {
     dim3 grid(TS, TS / WPT);
     dim3 block((N + TS - 1)/ TS, (M + TS - 1)/ TS);
     const int n = repeats(M, N, K, 0.370);
     for (int i = 0; i < n; ++i)
-        gemm_v3<<<block, grid>>>(M, N, K, A, B, C);
+        gemm_v3a<<<block, grid>>>(M, N, K, A, B, C);
     assert(cudaGetLastError() == cudaSuccess);
     return n;
 }

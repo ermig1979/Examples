@@ -5,7 +5,7 @@
 int gemm_cublas(int M, int N, int K, const float * A, const float * B, float * C)
 {
     const float alpha = 1.0f, beta = 0.0f;
-    const int n = repeats(M, N, K, 0.800);
+    const int n = repeats(M, N, K, 0.94);
     cublasHandle_t handle;
     assert(cublasCreate(&handle) == cudaSuccess);
     for(int i = 0; i < n; ++i)

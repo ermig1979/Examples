@@ -2,7 +2,7 @@
 
 const int TS = 32;
 
-__global__ void gemm_v2(int M, int N, int K, const float * A, const float * B, float * C)
+__global__ void gemm_v2a(int M, int N, int K, const float * A, const float * B, float * C)
 {
     int Ma = M / TS * TS;
     int Na = N / TS * TS;
@@ -33,13 +33,13 @@ __global__ void gemm_v2(int M, int N, int K, const float * A, const float * B, f
     }
 }
 
-int gemm_gpu_v2(int M, int N, int K, const float * A, const float * B, float * C)
+int gemm_gpu_v2a(int M, int N, int K, const float * A, const float * B, float * C)
 {
     dim3 grid(TS, TS);
     dim3 block((N + TS - 1)/ TS, (M + TS - 1)/ TS);
-    const int n = repeats(M, N, K, 0.170);
+    const int n = repeats(M, N, K, 0.17);
     for (int i = 0; i < n; ++i)
-        gemm_v2<<<block, grid>>>(M, N, K, A, B, C);
+        gemm_v2a<<<block, grid>>>(M, N, K, A, B, C);
     assert(cudaGetLastError() == cudaSuccess);
     return n;
 }

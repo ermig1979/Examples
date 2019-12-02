@@ -1,6 +1,6 @@
 #include "defs.h"
 
-__global__ void gemm_v0(int M, int N, int K, const float * A, const float * B, float * C)
+__global__ void gemm_v0a(int M, int N, int K, const float * A, const float * B, float * C)
 {
     int i = blockDim.y * blockIdx.y + threadIdx.y;
     int j = blockDim.x * blockIdx.x + threadIdx.x;
@@ -12,14 +12,14 @@ __global__ void gemm_v0(int M, int N, int K, const float * A, const float * B, f
     }
 }
 
-int gemm_gpu_v0(int M, int N, int K, const float * A, const float * B, float * C)
+int gemm_gpu_v0a(int M, int N, int K, const float * A, const float * B, float * C)
 {
-    const int n = repeats(M, N, K, 0.030);
+    const int n = repeats(M, N, K, 0.03);
     const int TS = 16;
     dim3 grid(TS, TS);
     dim3 block((N + TS - 1)/TS, (M + TS - 1)/TS);
     for (int i = 0; i < n; ++i)
-        gemm_v0<<<block, grid>>>(M, N, K, A, B, C);
+        gemm_v0a<<<block, grid>>>(M, N, K, A, B, C);
     assert(cudaGetLastError() == cudaSuccess);
     return n;
 }
