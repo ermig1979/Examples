@@ -1,4 +1,6 @@
 #include "defs.h"
+#include <vector_types.h>
+#include <device_functions.h>
 
 const int TS = 32;
 const int W = 4;
@@ -177,7 +179,6 @@ __global__ void gemm_v4c(int M, int N, int K, const floats * A, const floats * B
     }
 }
 
-
 int gemm_gpu_v4c(int M, int N, int K, const float * A, const float * B, float * C)
 {
     dim3 grid(PTS, TS);
@@ -186,6 +187,74 @@ int gemm_gpu_v4c(int M, int N, int K, const float * A, const float * B, float * 
     for (int i = 0; i < n; ++i)
     {
         gemm_v4c<<<block, grid>>> (M, N, K, (const floats*)A, (const floats*)B, (floats*)C);
+    }
+    assert(cudaGetLastError() == cudaSuccess);
+    return n;
+}
+
+__global__ void gemm_v4d(int M, int N, int K, const float4* A, const float4* B, float4* C)
+{
+    int Ma = M / TS * TS;
+    int Na = N / TS * TS;
+    int Ka = K / TS;
+    int i = TS * blockIdx.y + threadIdx.y;
+    int j = PTS * blockIdx.x + threadIdx.x;
+    if (i < M && j < N)
+    {
+        int k0 = 0;
+        float4 _c = { 0, 0, 0, 0 };
+        if (i < Ma && j < Na)
+        {
+            __shared__ float4 sA[TS][PTS];
+            __shared__ float4 sB[TS][PTS];
+            for (; k0 < Ka; k0 += 1)
+            {
+#if __CUDA_ARCH__ >= 320
+                sA[threadIdx.y][threadIdx.x] = __ldg(&A[(i)*K / W + (k0 * PTS + threadIdx.x)]);
+                sB[threadIdx.y][threadIdx.x] = __ldg(&B[(k0 * TS + threadIdx.y) * N / W + (j)]);
+#else
+                sA[threadIdx.y][threadIdx.x] = A[(i)*K / W + (k0 * PTS + threadIdx.x)];
+                sB[threadIdx.y][threadIdx.x] = B[(k0 * TS + threadIdx.y) * N / W + (j)];
+#endif
+                __syncthreads();
+                float4 _a, _b;
+                float a;
+                for (int k = 0; k < PTS; k++)
+                {
+                    _a = sA[threadIdx.y][k];
+#pragma unroll
+                    for (int wk = 0; wk < W; wk++)
+                    {
+                        switch (wk)
+                        {
+                        case 0: a = _a.x; break;
+                        case 1: a = _a.y; break;
+                        case 2: a = _a.z; break;
+                        case 3: a = _a.w; break;
+                        }
+                        _b = sB[k * W + wk][threadIdx.x];
+                        _c.x += a * _b.x;
+                        _c.y += a * _b.y;
+                        _c.z += a * _b.z;
+                        _c.w += a * _b.w;
+                    }
+                }
+                __syncthreads();
+            }
+        }
+        C[(i)*N / W + j] = _c;
+    }
+}
+
+
+int gemm_gpu_v4d(int M, int N, int K, const float* A, const float* B, float* C)
+{
+    dim3 grid(PTS, TS);
+    dim3 block((N + TS - 1) / TS, (M + TS - 1) / TS);
+    const int n = repeats(M, N, K, 0.21);
+    for (int i = 0; i < n; ++i)
+    {
+        gemm_v4d <<<block, grid >>> (M, N, K, (const float4*)A, (const float4*)B, (float4*)C);
     }
     assert(cudaGetLastError() == cudaSuccess);
     return n;

@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
     init(b);
     control(gemm_cublas, o, a, b, c);
 
-    if (o.L <= 0 && !test(gemm_cublas, " gemm_cublas", o, a, b, c)) return 1;
+    if (!test(gemm_cublas, "gemm_cublas ", o, a, b, c)) return 1;
     if (o.L <= 0 && !test(gemm_gpu_v0a, "gemm_gpu_v0a", o, a, b, c)) return 1;
     if (o.L <= 1 && !test(gemm_gpu_v1a, "gemm_gpu_v1a", o, a, b, c)) return 1;
     if (o.L <= 2 && !test(gemm_gpu_v2a, "gemm_gpu_v2a", o, a, b, c)) return 1;
@@ -183,7 +183,10 @@ int main(int argc, char* argv[])
     if (o.L <= 4 && !test(gemm_gpu_v4a, "gemm_gpu_v4a", o, a, b, c)) return 1;
     if (o.L <= 4 && !test(gemm_gpu_v4b, "gemm_gpu_v4b", o, a, b, c)) return 1;
     if (o.L <= 4 && !test(gemm_gpu_v4c, "gemm_gpu_v4c", o, a, b, c)) return 1;
+    if (o.L <= 4 && !test(gemm_gpu_v4d, "gemm_gpu_v4d", o, a, b, c)) return 1;
     if (o.L <= 5 && !test(gemm_gpu_v5a, "gemm_gpu_v5a", o, a, b, c)) return 1;
     if (o.L <= 5 && !test(gemm_gpu_v5b, "gemm_gpu_v5b", o, a, b, c)) return 1;
     if (o.L <= 5 && !test(gemm_gpu_v5c, "gemm_gpu_v5c", o, a, b, c)) return 1;
+    if (o.L <= 6 && !test(gemm_gpu_v6a, "gemm_gpu_v6a", o, a, b, c)) return 1;
+    if (o.L <= 7 && !test(gemm_gpu_v7a, "gemm_gpu_v7a", o, a, b, c)) return 1;
 }

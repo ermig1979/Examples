@@ -4,9 +4,6 @@ const int TS = 32;
 const int WPT = 8;
 const int PTS = TS / WPT;
 
-const int TRX = 16;
-const int TRY = 16;
-
 const int TSDK = 16;
 const int LPT = TSDK * WPT / TS;
 
