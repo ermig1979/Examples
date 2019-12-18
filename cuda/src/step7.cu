@@ -97,13 +97,9 @@ __global__ void gemm_v7a(int M, int N, int K, const float4 * A, int lda, const f
 
 int gemm_gpu_v7a(int M, int N, int K, const float* A, const float* B, float* C)
 {
-    gpu_buf_t tA(M * K);
-    dim3 gridT(TRX, TRY);
-    dim3 blockT((M + TRX - 1) / TRX, (K + TRY - 1) / TRY);
-
     dim3 grid(RTS_M, RTS_N);
     dim3 block(M / TSM, N / TSN);
-    const int n = repeats(M, N, K, 0.370);
+    const int n = repeats(M, N, K, 0.180);
     for (int i = 0; i < n; ++i)
     {
 		gemm_v7a <<<block, grid >>> (M, N, K, (const float4*)A, K, (const float4*)B, N, C, N);

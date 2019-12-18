@@ -33,6 +33,7 @@ int gemm_gpu_v5b(int M, int N, int K, const float* A, const float* B, float* C);
 int gemm_gpu_v5c(int M, int N, int K, const float* A, const float* B, float* C);
 int gemm_gpu_v6a(int M, int N, int K, const float* A, const float* B, float* C);
 int gemm_gpu_v7a(int M, int N, int K, const float* A, const float* B, float* C);
+int gemm_gpu_v8a(int M, int N, int K, const float* A, const float* B, float* C);
 
 const int TRX = 16;
 const int TRY = 16;

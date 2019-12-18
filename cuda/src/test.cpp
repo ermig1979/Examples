@@ -31,10 +31,13 @@ void copy(const gpu_buf_t& src, cpu_buf_t& dst)
     assert(error == cudaSuccess);
 }
 
-void init(cpu_buf_t & buf)
+void init(cpu_buf_t & buf, float lo, float hi)
 {
     for (int i = 0; i < buf.n; ++i)
-        buf.p[i] = float(rand()) / float(RAND_MAX) - 0.5f;
+    {
+        float val = float(rand()) / float(RAND_MAX);
+        buf.p[i] = val*(hi - lo) + lo;
+    }
 }
 
 inline float square(float x)
@@ -48,20 +51,23 @@ inline float invalid(float a, float b, float e2)
     return d2 > e2 && d2 > e2*(a*a + b*b);
 }
 
-bool check(const cpu_buf_t & control, const cpu_buf_t & current, const std::string & desc, float eps = 0.001f)
+bool check(const cpu_buf_t & control, const cpu_buf_t & current, const std::string & desc, float eps = 0.001f, int count = 32)
 {
     assert(control.n == current.n);
     float e2 = square(eps);
+    int errors = 0;
     for (int i = 0; i < control.n; ++i)
     {
         if (invalid(control.p[i], current.p[i], e2))
         {
             std::cout << desc << " : check error at " << i << ": ";
             std::cout << std::setprecision(4) << std::fixed << control.p[i] << " != " << current.p[i] << std::endl;
-            return false;
+            errors++;
+            if (errors >= count)
+                return false;
         }
     }
-    return true;
+    return errors == 0;
 }
 
 struct opt_t
@@ -78,13 +84,10 @@ struct opt_t
         L = 0;
         T = 1000.0f;
         if (argc == 2) M = atoi(argv[1]), N = atoi(argv[1]), K = atoi(argv[1]);
+        else if (argc == 3) M = atoi(argv[1]), N = atoi(argv[1]), K = atoi(argv[1]), L = atoi(argv[2]);
+        else if (argc == 5) M = atoi(argv[1]), N = atoi(argv[2]), K = atoi(argv[3]), L = atoi(argv[4]);
         else
-        {
-            if (argc > 1) M = atoi(argv[1]);
-            if (argc > 2) N = atoi(argv[2]);
-            if (argc > 3) K = atoi(argv[3]);
-            if (argc > 4) L = atoi(argv[4]);
-        }
+            assert(0);
     }
 };
 
@@ -155,13 +158,19 @@ int gemm_cpu(int M, int N, int K, const float * A, const float * B, float * C)
 
 void print_info(const opt_t & o)
 {
+    printf("C[%d, %d] = A[%d, %d] * B[%d, %d].\n", o.M, o.N, o.M, o.K, o.K, o.N);
     int deviceCount;
     cudaGetDeviceCount(&deviceCount);
     for (int device = 0; device < deviceCount; ++device)
     {
         cudaDeviceProp deviceProp;
         cudaGetDeviceProperties(&deviceProp, device);
-        printf("Device %d has compute capability %d.%d.\n", device, deviceProp.major, deviceProp.minor);
+        printf("Device %d: '%s'.\n", device, deviceProp.name);
+        printf("Compute capability: %d.%d.\n", deviceProp.major, deviceProp.minor);
+        printf("Device global memory: %d MB.\n", int(deviceProp.totalGlobalMem/1024/1024));
+        printf("Shared memory per block: %d kB.\n", int(deviceProp.sharedMemPerBlock/1024));
+        printf("Registers per block: %d kB.\n", int(deviceProp.regsPerBlock / 1024));
+        printf("\n");
     }
 }
 
@@ -171,8 +180,8 @@ int main(int argc, char* argv[])
     print_info(o);
 
     cpu_buf_t a(o.M*o.K), b(o.K*o.N), c(o.M*o.N);
-    init(a);
-    init(b);
+    init(a, -0.5f, 0.5f);
+    init(b, -0.5f, 0.5f);
     control(gemm_cublas, o, a, b, c);
 
     if (!test(gemm_cublas, "gemm_cublas ", o, a, b, c)) return 1;
@@ -189,4 +198,5 @@ int main(int argc, char* argv[])
     if (o.L <= 5 && !test(gemm_gpu_v5c, "gemm_gpu_v5c", o, a, b, c)) return 1;
     if (o.L <= 6 && !test(gemm_gpu_v6a, "gemm_gpu_v6a", o, a, b, c)) return 1;
     if (o.L <= 7 && !test(gemm_gpu_v7a, "gemm_gpu_v7a", o, a, b, c)) return 1;
+    if (o.L <= 8 && !test(gemm_gpu_v8a, "gemm_gpu_v8a", o, a, b, c)) return 1;
 }
