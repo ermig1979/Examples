@@ -1,6 +1,6 @@
-# Matrix Multiplication Optimization Step By Step
+# Programs optimization examples
 
-This project contains a examples of gradual (step by step) optimization  of matrix multiplication.
+This project contains examples of programs optimization.
 
-There are following samples:
-1. [A single-thread CPU example of optimization of matrix multiplication.](https://github.com/ermig1979/mmosbs/tree/master/cpu_st/)
+There are following examples:
+1. [The matrix multiplication optimization step by step. A single-thread example for CPU.](https://github.com/ermig1979/Examples/tree/master/mmosbs_cpu_st/)

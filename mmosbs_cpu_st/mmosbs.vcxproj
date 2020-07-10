@@ -11,28 +11,36 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\*.cpp" />
+    <ClCompile Include="./src/step0.cpp" />
+    <ClCompile Include="./src/step1.cpp" />
+    <ClCompile Include="./src/step2.cpp" />
+    <ClCompile Include="./src/step3.cpp" />
+    <ClCompile Include="./src/step4.cpp" />
+    <ClCompile Include="./src/step5.cpp" />
+    <ClCompile Include="./src/step6.cpp" />
+    <ClCompile Include="./src/step7.cpp" />
+    <ClCompile Include="./src/test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\*.h" />
+    <ClInclude Include="src\defs.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>mmosbs</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>

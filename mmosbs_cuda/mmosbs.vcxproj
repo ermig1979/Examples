@@ -98,9 +98,18 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\*.h" />
-    <ClCompile Include="src\*.cpp" />
-    <CudaCompile Include="./src/*.cu" />
+    <ClInclude Include="./src/defs.h" />
+    <ClCompile Include="./src/cublas.cpp" />
+    <ClCompile Include="./src/test.cpp" />
+    <CudaCompile Include="./src/step0.cu" />
+    <CudaCompile Include="./src/step1.cu" />
+    <CudaCompile Include="./src/step2.cu" />
+    <CudaCompile Include="./src/step3.cu" />
+    <CudaCompile Include="./src/step4.cu" />
+    <CudaCompile Include="./src/step5.cu" />
+    <CudaCompile Include="./src/step6.cu" />
+    <CudaCompile Include="./src/step7.cu" />
+    <CudaCompile Include="./src/step8.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
