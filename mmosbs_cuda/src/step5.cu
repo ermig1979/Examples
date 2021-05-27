@@ -66,7 +66,7 @@ int gemm_gpu_v5a(int M, int N, int K, const float* A, const float* B, float* C)
         transpose <<<blockT, gridT >>> (N, K, B, tB.p);
         gemm_v5a <<<block, grid >>> (M, N, K, A, tB.p, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }
 
@@ -123,7 +123,7 @@ int gemm_gpu_v5b(int M, int N, int K, const float* A, const float* B, float* C)
         transpose <<<blockT, gridT >>> (M, K, A, tA.p);
         gemm_v5b <<<block, grid >>> (M, N, K, tA.p, B, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }
 
@@ -171,6 +171,6 @@ int gemm_gpu_v5c(int M, int N, int K, const float* A, const float* B, float* C)
         transpose<<<blockT, gridT>>>(M, K, A, tA.p);
         gemm_v5c<<<block, grid>>>(M, N, K, tA.p, B, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }

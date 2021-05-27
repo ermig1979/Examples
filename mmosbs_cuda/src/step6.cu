@@ -102,6 +102,6 @@ int gemm_gpu_v6a(int M, int N, int K, const float* A, const float* B, float* C)
         transpose<<<blockT, gridT>>>(M, K, A, tA.p);
         gemm_v6a<<<block, grid>>>(M, N, K, tA.p, B, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }

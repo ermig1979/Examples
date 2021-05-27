@@ -125,12 +125,7 @@ int gemm_gpu_v8a(int M, int N, int K, const float* A, const float* B, float* C)
     for (int i = 0; i < n; ++i)
     {
 		gemm_v8a <<<block, grid >>> (M, N, K, (const float4*)A, K, (const float4*)B, N, C, N);
-		cudaError_t error = cudaGetLastError();
-		if (error != cudaSuccess)
-		{
-			printf("Error: %s\n", cudaGetErrorString(error));
-			assert(error == cudaSuccess);
-		}    
+		CHECK(cudaGetLastError());
 	}
 
     return n;

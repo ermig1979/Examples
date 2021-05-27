@@ -20,15 +20,13 @@ struct cpu_buf_t
 void copy(const cpu_buf_t& src, gpu_buf_t& dst)
 {
     assert(src.n == dst.n);
-    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyHostToDevice);
-    assert(error == cudaSuccess);
+    CHECK(cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyHostToDevice));
 }
 
 void copy(const gpu_buf_t& src, cpu_buf_t& dst)
 {
     assert(src.n == dst.n);
-    cudaError_t error = cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyDeviceToHost);
-    assert(error == cudaSuccess);
+    CHECK(cudaMemcpy(dst.p, src.p, src.n * sizeof(float), cudaMemcpyDeviceToHost));
 }
 
 void init(cpu_buf_t & buf, float lo, float hi)
@@ -110,22 +108,22 @@ bool test(gemm_t gemm, const std::string & desc, const opt_t & o,
     cudaDeviceSynchronize();
 
     cudaEvent_t start, stop;
-    assert(cudaEventCreate(&start) == cudaSuccess);
-    assert(cudaEventCreate(&stop) == cudaSuccess);
+    CHECK(cudaEventCreate(&start));
+    CHECK(cudaEventCreate(&stop));
     float t = 0, ms = 0;
     int n = 0;
     while(t < o.T)
     {
-        assert(cudaEventRecord(start, NULL) == cudaSuccess);
+        CHECK(cudaEventRecord(start, NULL));
         n += gemm(o.M, o.N, o.K, _a.p, _b.p, _c.p);
-        assert(cudaEventRecord(stop, NULL) == cudaSuccess);
-        assert(cudaEventSynchronize(stop) == cudaSuccess);
-        assert(cudaEventElapsedTime(&ms, start, stop) == cudaSuccess);
+        CHECK(cudaEventRecord(stop, NULL));
+        CHECK(cudaEventSynchronize(stop));
+        CHECK(cudaEventElapsedTime(&ms, start, stop));
         t += ms;
         std::cout << std::setprecision(1) << std::fixed << t/o.T*100.0f << "%\r" << std::flush;
     }
-    assert(cudaEventDestroy(start) == cudaSuccess);
-    assert(cudaEventDestroy(stop) == cudaSuccess);
+    CHECK(cudaEventDestroy(start));
+    CHECK(cudaEventDestroy(stop));
 
     double gflops = 2*double(o.M*o.N)*o.K*n / (t / 1000.0f) / (1000 * 1000 * 1000);
 

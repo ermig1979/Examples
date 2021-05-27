@@ -65,7 +65,7 @@ int gemm_gpu_v4a(int M, int N, int K, const float* A, const float* B, float* C)
     {
         gemm_v4a<<<block, grid>>>(M, N, K, A, B, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }
 
@@ -126,7 +126,7 @@ int gemm_gpu_v4b(int M, int N, int K, const float* A, const float* B, float* C)
     {
         gemm_v4b<<<block, grid>>> (M, N, K, A, B, C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }
 
@@ -256,6 +256,6 @@ int gemm_gpu_v4d(int M, int N, int K, const float* A, const float* B, float* C)
     {
         gemm_v4d <<<block, grid >>> (M, N, K, (const float4*)A, (const float4*)B, (float4*)C);
     }
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }

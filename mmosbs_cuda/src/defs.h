@@ -10,6 +10,21 @@
 
 #include <cuda_runtime.h>
 
+inline bool check(cudaError_t error, const std::string & action, const std::string& file, int line)
+{
+    if (error == cudaSuccess)
+        return true;
+    else
+    {
+        std::cout << action << " return error: " << cudaGetErrorName(error);
+        std::cout << ", " << file << ", " << line<< std::endl;
+        assert(0);
+        return false;
+    }
+}
+
+#define CHECK(action) check(action, #action, __FILE__, __LINE__)
+
 inline int repeats(int M, int N, int K, double k)
 {
     int n = std::max(int(double(1024) / double(M) * double(1024) / double(N) * double(1024) / double(K) * k * 1000.0), 1);
@@ -49,16 +64,14 @@ struct gpu_buf_t
         : n(size)
         , p(0)
     {
-        cudaError_t error = cudaMalloc(&p, n * sizeof(float));
-        assert(error == cudaSuccess);
+        CHECK(cudaMalloc(&p, n * sizeof(float)));
     }
 
     ~gpu_buf_t()
     {
         if (p)
         {
-            cudaError_t error = cudaFree(p);
-            assert(error == cudaSuccess);
+            CHECK(cudaFree(p));
             p = 0;
         }
     }

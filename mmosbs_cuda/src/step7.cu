@@ -104,6 +104,6 @@ int gemm_gpu_v7a(int M, int N, int K, const float* A, const float* B, float* C)
     {
 		gemm_v7a <<<block, grid >>> (M, N, K, (const float4*)A, K, (const float4*)B, N, C, N);
     }
-    assert(cudaGetLastError() == cudaSuccess);
-    return n;
+	CHECK(cudaGetLastError());
+	return n;
 }

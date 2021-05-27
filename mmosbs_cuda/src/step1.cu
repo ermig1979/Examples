@@ -21,6 +21,6 @@ int gemm_gpu_v1a(int M, int N, int K, const float * A, const float * B, float * 
     const int n = repeats(M, N, K, 0.05);
     for (int i = 0; i < n; ++i)
         gemm_v1a<<<block, grid>>>(M, N, K, A, B, C);
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }

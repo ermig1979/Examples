@@ -20,6 +20,6 @@ int gemm_gpu_v0a(int M, int N, int K, const float * A, const float * B, float * 
     dim3 block((N + TS - 1)/TS, (M + TS - 1)/TS);
     for (int i = 0; i < n; ++i)
         gemm_v0a<<<block, grid>>>(M, N, K, A, B, C);
-    assert(cudaGetLastError() == cudaSuccess);
+    CHECK(cudaGetLastError());
     return n;
 }
