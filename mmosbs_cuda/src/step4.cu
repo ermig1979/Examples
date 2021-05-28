@@ -1,6 +1,5 @@
 #include "defs.h"
 #include <vector_types.h>
-#include <device_functions.h>
 
 const int TS = 32;
 const int W = 4;

@@ -1,7 +1,5 @@
 #include "defs.h"
 
-#include <device_functions.h>
-
 namespace a
 {
 	const int _K = 16;

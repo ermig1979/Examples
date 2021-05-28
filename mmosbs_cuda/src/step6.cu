@@ -1,7 +1,5 @@
 #include "defs.h"
 
-#include <device_functions.h>
-
 const int TSM = 128;
 const int TSN = 128;
 const int TSK = 16;

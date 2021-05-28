@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
+project(mmosbs)
+
 find_package(CUDA QUIET REQUIRED)
 
 include_directories(./src)

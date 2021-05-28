@@ -15,8 +15,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{997E0757-EA74-4A4E-A0FC-47D8C8831A15}</ProjectGuid>
-    <RootNamespace>mmosbs</RootNamespace>
-    <ProjectName>mmosbs</ProjectName>
+    <ProjectName>graph_test</ProjectName>
     <CudaToolkitCustomDir />
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -63,6 +62,7 @@
       <OutputFile>$(OutDir)/$(ProjectName).exe</OutputFile>
     </Link>
     <CudaCompile>
+      <Runtime>MT</Runtime>
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
@@ -89,24 +89,12 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
-    <CudaCompile>
-      <Runtime>MT</Runtime>
-      <TargetMachinePlatform>64</TargetMachinePlatform>
-    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="./src/defs.h" />
     <ClCompile Include="./src/cublas.cpp" />
     <ClCompile Include="./src/test.cpp" />
-    <CudaCompile Include="./src/step0.cu" />
-    <CudaCompile Include="./src/step1.cu" />
-    <CudaCompile Include="./src/step2.cu" />
-    <CudaCompile Include="./src/step3.cu" />
-    <CudaCompile Include="./src/step4.cu" />
-    <CudaCompile Include="./src/step5.cu" />
-    <CudaCompile Include="./src/step6.cu" />
-    <CudaCompile Include="./src/step7.cu" />
-    <CudaCompile Include="./src/step8.cu" />
+    <CudaCompile Include="src\step7.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
