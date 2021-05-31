@@ -2,10 +2,6 @@
 
 #include "tensor.h"
 
-struct node_t
-{
-    gpu_tensors_t src, dst;
-    cudaGraphNode_t graphNode;
-};
+__global__ void add_kernel(int size, const float* a, const float* b, float* c);
 
-void add_node(node_t* node);
+void* add_kernel_ptr();

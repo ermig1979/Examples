@@ -44,7 +44,20 @@ int main(int argc, char* argv[])
 
     cudaGraphNode_t addNode;
     cudaKernelNodeParams addParams;
-    CHECK(cudaGraphAddKernelNode(&addNode, graph, NULL, 0, &addParams));
+    addParams.func = (void*)add_kernel;
+    int threads = 16;
+    int blocks = (ga.size + threads - 1) / threads;
+    addParams.gridDim = dim3(blocks, 1, 1);
+    addParams.blockDim = dim3(threads, 1, 1);
+    addParams.sharedMemBytes = 0;
+    int size = ga.size;
+    void * addArgs[4] = { (void*)&size, (void*)&ga.data, (void*)&gb.data, (void*)&gc.data};
+    addParams.kernelParams = addArgs;
+    addParams.extra = NULL;
+    std::vector<cudaGraphNode_t> addDependencies;
+    addDependencies.push_back(aCopyNode);
+    addDependencies.push_back(bCopyNode);
+    CHECK(cudaGraphAddKernelNode(&addNode, graph, addDependencies.data(), addDependencies.size(), &addParams));
 
     cudaMemcpy3DParms cCopyParams;
     cCopyParams.srcArray = NULL;
@@ -56,7 +69,28 @@ int main(int argc, char* argv[])
     cCopyParams.extent = make_cudaExtent(gc.size * sizeof(float), 1, 1);
     cCopyParams.kind = cudaMemcpyDeviceToHost;
     cudaGraphNode_t cCopyNode;
-    CHECK(cudaGraphAddMemcpyNode(&cCopyNode, graph, NULL, 0, &cCopyParams));
+    std::vector<cudaGraphNode_t> cCopyDependencies;
+    cCopyDependencies.push_back(addNode);
+    CHECK(cudaGraphAddMemcpyNode(&cCopyNode, graph, cCopyDependencies.data(), cCopyDependencies.size(), &cCopyParams));
+
+    cudaGraphNode_t* nodes = NULL;
+    size_t numNodes = 0;
+    CHECK(cudaGraphGetNodes(graph, nodes, &numNodes));
+    printf("Num of nodes in the graph created manually = %zu\n", numNodes);
+
+    cudaStream_t stream;
+    CHECK(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+
+    cudaGraphExec_t graphExec;
+    CHECK(cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0));
+
+    CHECK(cudaGraphLaunch(graphExec, stream));
+
+    CHECK(cudaStreamSynchronize(stream));
+
+    CHECK(cudaGraphExecDestroy(graphExec));
 
     CHECK(cudaGraphDestroy(graph));
+
+    CHECK(cudaStreamDestroy(stream));
 }

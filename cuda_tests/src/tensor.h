@@ -31,7 +31,7 @@ inline shape_t to_shape(size_t a, size_t b, size_t c)
 
 inline shape_t to_shape(size_t a, size_t b, size_t c, size_t d)
 {
-    return shape_t({ a, a, b, c });
+    return shape_t({ a, b, c, d });
 }
 
 struct gpu_tensor_t
@@ -42,7 +42,7 @@ struct gpu_tensor_t
 
     gpu_tensor_t(const shape_t& shape_ = shape_t())
         : shape(shape_)
-        , size(to_size(shape))
+        , size(to_size(shape_))
         , data(0)
     {
         CHECK(cudaMalloc(&data, size * sizeof(float)));
@@ -68,7 +68,7 @@ struct cpu_tensor_t
 
     cpu_tensor_t(const shape_t& shape_ = shape_t())
         : shape(shape_)
-        , size(to_size(shape))
+        , size(to_size(shape_))
         , data(0)
     {
         CHECK(cudaHostAlloc(&data, size * 4, cudaHostAllocDefault));
