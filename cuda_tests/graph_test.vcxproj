@@ -91,10 +91,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\utils.cpp" />
     <ClInclude Include="./src/defs.h" />
-    <ClCompile Include="./src/cublas.cpp" />
-    <ClCompile Include="./src/test.cpp" />
-    <CudaCompile Include="src\step7.cu" />
+    <ClCompile Include="src\graph_test.cpp" />
+    <ClInclude Include="src\nodes.h" />
+    <ClInclude Include="src\tensor.h" />
+    <ClInclude Include="src\utils.h" />
+    <CudaCompile Include="src\add_node.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
