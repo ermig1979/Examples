@@ -15,7 +15,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{997E0757-EA74-4A4E-A0FC-47D8C8831A15}</ProjectGuid>
-    <ProjectName>graph_test</ProjectName>
+    <ProjectName>graph_tests</ProjectName>
     <CudaToolkitCustomDir />
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -40,14 +40,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IntDir>$(Platform)/$(Configuration)/</IntDir>
+    <OutDir>$(SolutionDir)/bin/$(Platform)/$(Configuration)/</OutDir>
+    <IntDir>$(SolutionDir)/bin/$(Platform)/$(Configuration)/obj/</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules />
     <CodeAnalysisRuleAssemblies />
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <OutDir>./bin/$(Platform)/$(Configuration)/</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -91,13 +89,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\utils.cpp" />
-    <ClInclude Include="./src/defs.h" />
-    <ClCompile Include="src\graph_test.cpp" />
-    <ClInclude Include="src\nodes.h" />
-    <ClInclude Include="src\tensor.h" />
-    <ClInclude Include="src\utils.h" />
-    <CudaCompile Include="src\add_node.cu" />
+    <ClCompile Include="add_test.cpp" />
+    <ClCompile Include="nodes.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClInclude Include="defs.h" />
+    <ClCompile Include="graph_tests.cpp" />
+    <ClInclude Include="nodes.h" />
+    <ClInclude Include="tensor.h" />
+    <ClInclude Include="tests.h" />
+    <ClInclude Include="utils.h" />
+    <CudaCompile Include="nodes.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

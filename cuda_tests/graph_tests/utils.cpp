@@ -8,12 +8,12 @@ void print_device_info()
     {
         cudaDeviceProp deviceProp;
         CHECK(cudaGetDeviceProperties(&deviceProp, device));
-        printf("Device %d: '%s'.\n", device, deviceProp.name);
-        printf("Compute capability: %d.%d.\n", deviceProp.major, deviceProp.minor);
-        printf("Device global memory: %d MB.\n", int(deviceProp.totalGlobalMem / 1024 / 1024));
-        printf("Shared memory per block: %d kB.\n", int(deviceProp.sharedMemPerBlock / 1024));
-        printf("Registers per block: %d kB.\n", int(deviceProp.regsPerBlock / 1024));
-        printf("\n");
+        std::cout << "Device " << device << ": '" << deviceProp.name << "'." << std::endl;
+        std::cout << "Compute capability: " << deviceProp.major << "." << deviceProp.minor << "." << std::endl;
+        std::cout << "Device global memory: " << int(deviceProp.totalGlobalMem / 1024 / 1024) << " MB." << std::endl;
+        std::cout << "Shared memory per block: " << int(deviceProp.sharedMemPerBlock / 1024) << " kB." << std::endl;
+        std::cout << "Registers per block: " << int(deviceProp.regsPerBlock / 1024) << " kB." << std::endl;
+        std::cout << std::endl;
     }
 }
 

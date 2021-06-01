@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CudaCompile Include="nodes.cu">
+      <Filter>nodes</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="graph_tests.cpp" />
+    <ClCompile Include="utils.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="nodes.cpp">
+      <Filter>nodes</Filter>
+    </ClCompile>
+    <ClCompile Include="add_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="tensor.h">
+      <Filter>types</Filter>
+    </ClInclude>
+    <ClInclude Include="nodes.h">
+      <Filter>nodes</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="defs.h">
+      <Filter>types</Filter>
+    </ClInclude>
+    <ClInclude Include="tests.h">
+      <Filter>tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="types">
+      <UniqueIdentifier>{0df99b07-4733-4d16-83b9-2041773ef8d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="nodes">
+      <UniqueIdentifier>{928d612d-25c3-4148-b858-9f3f9d1f0bad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{180f7ef3-06a4-4dc2-84c3-c193ff998afa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{d551ae2d-63a9-4ec6-a62f-4185fef6a44d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
