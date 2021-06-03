@@ -90,6 +90,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="add_test.cpp" />
+    <ClCompile Include="capture_test.cpp" />
+    <ClCompile Include="cublas_test.cpp" />
     <ClCompile Include="nodes.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClInclude Include="defs.h" />

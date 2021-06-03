@@ -6,5 +6,9 @@ int main(int argc, char* argv[])
 {
     print_device_info();
 
-    add_test();
+    //add_test();
+
+    //cublas_test();
+
+    capture_test();
 }

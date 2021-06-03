@@ -39,20 +39,29 @@ struct gpu_tensor_t
     float* data;
     size_t size;
     shape_t shape;
+    cudaStream_t stream;
 
-    gpu_tensor_t(const shape_t& shape_ = shape_t())
+
+    gpu_tensor_t(const shape_t& shape_ = shape_t(), cudaStream_t stream_ = 0)
         : shape(shape_)
         , size(to_size(shape_))
         , data(0)
+        , stream(stream_)
     {
-        CHECK(cudaMalloc(&data, size * sizeof(float)));
+        //if(stream)
+        //    CHECK(cudaMallocAsync(&data, size * sizeof(float), stream));
+        //else
+            CHECK(cudaMalloc(&data, size * sizeof(float)));
     }
 
     ~gpu_tensor_t()
     {
         if (data)
         {
-            CHECK(cudaFree(data));
+            //if (stream)
+            //    CHECK(cudaFreeAsync(data, stream));
+            //else
+                CHECK(cudaFree(data));
             data = 0;
         }
     }
@@ -89,25 +98,19 @@ typedef std::vector<cpu_tensor_t> cpu_tensors_t;
 inline void copy(const cpu_tensor_t& src, gpu_tensor_t& dst)
 {
     assert(src.size == dst.size);
-    CHECK(cudaMemcpy(dst.data, src.data, src.size * sizeof(float), cudaMemcpyHostToDevice));
+    if(dst.stream)
+        CHECK(cudaMemcpyAsync(dst.data, src.data, src.size * sizeof(float), cudaMemcpyDeviceToHost, dst.stream));
+    else
+        CHECK(cudaMemcpy(dst.data, src.data, src.size * sizeof(float), cudaMemcpyHostToDevice));
 }
 
 inline void copy(const gpu_tensor_t& src, cpu_tensor_t& dst)
 {
     assert(src.size == dst.size);
-    CHECK(cudaMemcpy(dst.data, src.data, src.size * sizeof(float), cudaMemcpyDeviceToHost));
-}
-
-inline void copy(const cpu_tensor_t& src, gpu_tensor_t& dst, cudaStream_t stream)
-{
-    assert(src.size == dst.size);
-    CHECK(cudaMemcpyAsync(dst.data, src.data, src.size * sizeof(float), cudaMemcpyHostToDevice, stream));
-}
-
-inline void copy(const gpu_tensor_t& src, cpu_tensor_t& dst, cudaStream_t stream)
-{
-    assert(src.size == dst.size);
-    CHECK(cudaMemcpyAsync(dst.data, src.data, src.size * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    if(src.stream)
+        CHECK(cudaMemcpyAsync(dst.data, src.data, src.size * sizeof(float), cudaMemcpyDeviceToHost, src.stream));
+    else
+        CHECK(cudaMemcpy(dst.data, src.data, src.size * sizeof(float), cudaMemcpyDeviceToHost));
 }
 
 inline void init_rand(cpu_tensor_t& tensor, float lo, float hi, int seed = 0)

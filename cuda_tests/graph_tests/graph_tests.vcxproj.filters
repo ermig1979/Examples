@@ -16,6 +16,12 @@
     <ClCompile Include="add_test.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="cublas_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="capture_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tensor.h">
