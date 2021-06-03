@@ -19,6 +19,35 @@ void print_device_info()
 
 //-----------------------------------------------------------------------------
 
+void print_graph_info(cudaGraph_t graph)
+{
+    typedef  std::vector<cudaGraphNode_t> Nodes;
+    size_t numNodes = 0;
+    CHECK(cudaGraphGetNodes(graph, NULL, &numNodes));
+    std::cout << "Number of graph nodes: " << numNodes << std::endl;
+    Nodes nodes(numNodes);
+    CHECK(cudaGraphGetNodes(graph, nodes.data(), &numNodes));
+    for (size_t i = 0; i < numNodes; ++i)
+    {
+        cudaGraphNodeType type;
+        CHECK(cudaGraphNodeGetType(nodes[i], &type));
+        std::cout << "Node[" << i << "] type: " << type << std::endl;
+    }
+    size_t numEdges = 0;
+    CHECK(cudaGraphGetEdges(graph, NULL, NULL, &numEdges));
+    std::cout << "Number of graph edges: " << numEdges << std::endl;
+    Nodes from(numEdges), to(numEdges);
+    CHECK(cudaGraphGetEdges(graph, from.data(), to.data(), &numEdges));
+    for (size_t i = 0; i < numEdges; ++i)
+    {
+        //cudaGraphNodeType type;
+        //CHECK(cudaGraphNodeGetType(nodes[i], &type));
+        std::cout << "Edge[" << i << "]" << std::endl;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 inline float square(float x)
 {
     return x * x;

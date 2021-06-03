@@ -17,3 +17,16 @@ void add_cublas(cublasHandle_t handle, int size, const float* a, const float* b,
     assert(status == CUBLAS_STATUS_SUCCESS);
 }
 
+void scale_cpu(int size, float scale, float* data)
+{
+    for (int i = 0; i < size; ++i)
+        data[i] *= scale;
+}
+
+void scale_cublas(cublasHandle_t handle, int size, float scale, float* data)
+{
+    cublasStatus_t status;
+    status = cublasSscal_v2(handle, size, &scale, data, 1);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+}
+

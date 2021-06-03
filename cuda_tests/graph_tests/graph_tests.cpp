@@ -10,5 +10,9 @@ int main(int argc, char* argv[])
 
     //cublas_test();
 
-    capture_test();
+    //capture_test();
+
+    //subgraph_manual_test();
+
+    subgraph_capture_test();
 }

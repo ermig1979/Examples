@@ -24,10 +24,10 @@ void capture_test()
     gpu_tensor_t ga(shape, stream), gb(shape, stream), gc(shape, stream);
 
     cublasHandle_t cublasHandle;
-    CHECK(cublasCreate_v2(&cublasHandle));
-    CHECK(cublasSetStream_v2(cublasHandle, stream));
+    CHECK(cublasCreate(&cublasHandle));
+    CHECK(cublasSetStream(cublasHandle, stream));
 
-    CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
+    CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal));
 
     copy(ca, ga);
     copy(cb, gb);
@@ -39,6 +39,8 @@ void capture_test()
     cudaGraph_t graph;
     CHECK(cudaStreamEndCapture(stream, &graph));
 
+    print_graph_info(graph);
+
     cudaGraphExec_t graphExec;
     CHECK(cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0));
 
@@ -46,13 +48,7 @@ void capture_test()
 
     CHECK(cudaStreamSynchronize(stream));
 
-    //cudaGraphNode_t* nodes = NULL;
-    //size_t numNodes = 0;
-    //CHECK(cudaGraphGetNodes(graph, nodes, &numNodes));
-    //printf("\nNum of nodes in the graph created using stream capture API = %zu\n",
-    //    numNodes);
-
-    cublasDestroy_v2(cublasHandle);
+    cublasDestroy(cublasHandle);
 
     CHECK(cudaStreamDestroy(stream));
 

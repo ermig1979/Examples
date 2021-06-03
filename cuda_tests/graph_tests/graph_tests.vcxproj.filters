@@ -22,6 +22,9 @@
     <ClCompile Include="capture_test.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="subgraph_test.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tensor.h">
