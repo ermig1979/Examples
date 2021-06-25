@@ -1,25 +1,69 @@
-#include "basic_tutorial.h"
+#include "options.h"
 
-static int run_test(basic_tutorial_ptr test, const std::string& name, int argc, char* argv[])
+namespace Test
 {
-    std::cout << name << " start:" << std::endl;
-    if (test(argc, argv)) 
-    { 
-        std::cout << name << " is failed!" << std::endl; 
-        return 1; 
-    } 
-    else
+    struct Test
     {
-        std::cout << name << " is OK." << std::endl;
+        typedef int (*TestPtr)(Options options);
+
+        String name;
+        TestPtr test;
+
+        Test(const String& n, TestPtr t)
+            : name(n)
+            , test(t)
+        {
+        }
+
+        bool Required(const Options& options) const
+        {
+            bool required = options.includeFilter.empty();
+            for (size_t i = 0; i < options.includeFilter.size() && !required; ++i)
+                if (name.find(options.includeFilter[i]) != std::string::npos)
+                    required = true;
+            for (size_t i = 0; i < options.excludeFilter.size() && required; ++i)
+                if (name.find(options.excludeFilter[i]) != std::string::npos)
+                    required = false;
+            return required;
+        }
+    };
+    typedef std::vector<Test> Tests;
+    Tests g_tests;
+
+#define TEST_ADD(test) \
+    int test(Options options); \
+    bool test##Add() { g_tests.push_back(Test(#test, test)); return true; } \
+    bool test##Added = test##Add();
+
+    TEST_ADD(BasicTutorial01);
+    TEST_ADD(BasicTutorial02);
+
+    int RunTests(const Options& options)
+    {
+        for (const Test & test : g_tests)
+        {
+            if (test.Required(options))
+            {
+                std::cout << test.name << " start:" << std::endl;
+                if (test.test(options))
+                {
+                    std::cout << test.name << " is failed!" << std::endl;
+                    return 1;
+                }
+                else
+                {
+                    std::cout << test.name << " is OK." << std::endl;
+                    return 0;
+                }
+            }
+        }
         return 0;
     }
 }
 
-#define RUN_TEST(test, argc, argv) if(run_test(test, #test, argc, argv)) { return 1; }
-
 int main(int argc, char* argv[])
 {
-    RUN_TEST(basic_tutorial_01, argc, argv);
+    Test::Options options(argc, argv);
 
-    return 0;
+    return RunTests(options);
 }
