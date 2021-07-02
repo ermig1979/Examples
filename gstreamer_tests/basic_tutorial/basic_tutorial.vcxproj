@@ -26,8 +26,9 @@
   <ItemGroup>
     <ClInclude Include="args.h" />
     <ClInclude Include="common.h" />
+    <ClInclude Include="Gst\Common.h" />
+    <ClInclude Include="Gst\Pipeline.h" />
     <ClInclude Include="options.h" />
-    <ClInclude Include="strings.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>

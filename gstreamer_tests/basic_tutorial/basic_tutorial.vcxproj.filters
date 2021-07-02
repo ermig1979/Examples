@@ -19,8 +19,11 @@
     <ClInclude Include="options.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="strings.h">
-      <Filter>utils</Filter>
+    <ClInclude Include="Gst\Common.h">
+      <Filter>gst</Filter>
+    </ClInclude>
+    <ClInclude Include="Gst\Pipeline.h">
+      <Filter>gst</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -29,6 +32,9 @@
     </Filter>
     <Filter Include="utils">
       <UniqueIdentifier>{f36ab03f-9821-4a19-b674-e7082a3349da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gst">
+      <UniqueIdentifier>{4bd78f12-b144-4b30-b11b-4ee9e1844bd4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
