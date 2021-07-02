@@ -1,7 +1,5 @@
 #include "options.h"
 
-#include <gst/gst.h>
-
 #include "Gst/Pipeline.h"
 
 namespace Test

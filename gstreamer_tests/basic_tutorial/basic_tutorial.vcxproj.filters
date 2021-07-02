@@ -8,6 +8,9 @@
     <ClCompile Include="basic_tutorial_02.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="basic_tutorial_03.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="args.h">
