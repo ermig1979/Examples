@@ -38,6 +38,7 @@ namespace Test
     TEST_ADD(BasicTutorial01);
     TEST_ADD(BasicTutorial02);
     TEST_ADD(BasicTutorial03);
+    TEST_ADD(BasicTutorial04);
 
     int RunTests(const Options& options)
     {

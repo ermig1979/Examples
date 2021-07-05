@@ -23,6 +23,7 @@
     <ClCompile Include="basic_tutorial_01.cpp" />
     <ClCompile Include="basic_tutorial_02.cpp" />
     <ClCompile Include="basic_tutorial_03.cpp" />
+    <ClCompile Include="basic_tutorial_04.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="args.h" />
