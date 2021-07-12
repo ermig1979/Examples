@@ -31,6 +31,9 @@
     <ClInclude Include="Gst\Pipeline.h">
       <Filter>gst</Filter>
     </ClInclude>
+    <ClInclude Include="Gst\Element.h">
+      <Filter>gst</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="tests">

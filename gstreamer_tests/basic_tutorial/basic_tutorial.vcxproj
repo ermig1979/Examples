@@ -29,6 +29,7 @@
     <ClInclude Include="args.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="Gst\Common.h" />
+    <ClInclude Include="Gst\Element.h" />
     <ClInclude Include="Gst\Pipeline.h" />
     <ClInclude Include="options.h" />
   </ItemGroup>
