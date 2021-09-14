@@ -23,7 +23,6 @@ namespace Test
         CustomData data;
         GstBus* bus;
         GstMessage* msg;
-        GstStateChangeReturn ret;
 
         data.playing = FALSE;
         data.terminate = FALSE;

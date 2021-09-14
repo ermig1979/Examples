@@ -1,6 +1,6 @@
 #include "options.h"
 
-#include "Gst/Pipeline.h"
+#include "Gst/Element.h"
 
 namespace Test
 {
@@ -15,11 +15,11 @@ namespace Test
         /* Initialize GStreamer */
         gst_init(options.ArgcPtr(), options.ArgvPtr());
 
-        Gst::Pipeline pipeline;
-        if (!pipeline.InitFromFile(options.source))
+        Gst::Element pipeline;
+        if (!pipeline.PipelineFromFile(options.source))
             return 1;
 
-        if (!pipeline.Play())
+        if (!pipeline.SetState(GST_STATE_PLAYING))
             return 1;
 
         /* Wait until error or EOS */

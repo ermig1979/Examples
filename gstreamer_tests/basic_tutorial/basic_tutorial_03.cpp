@@ -1,13 +1,13 @@
 #include "options.h"
 
-#include "Gst/Pipeline.h"
+#include "Gst/Element.h"
 
 namespace Test
 {
     /* Structure to contain all our information, so we can pass it to callbacks */
     struct CustomData
     {
-        Gst::Pipeline pipeline;
+        Gst::Element pipeline;
         GstElement* source;
         GstElement* convert;
         GstElement* resample;
@@ -23,13 +23,12 @@ namespace Test
         CustomData data;
         GstBus* bus;
         GstMessage* msg;
-        GstStateChangeReturn ret;
         gboolean terminate = FALSE;
 
         /* Initialize GStreamer */
         gst_init(options.ArgcPtr(), options.ArgvPtr());
 
-        if (!data.pipeline.InitNew("test-pipeline"))
+        if (!data.pipeline.PipelineNew("test-pipeline"))
             return 1;
 
         /* Create the elements */
@@ -61,7 +60,7 @@ namespace Test
         g_signal_connect(data.source, "pad-added", G_CALLBACK(pad_added_handler),
             &data);
 
-        if (!data.pipeline.Play())
+        if (!data.pipeline.SetState(GST_STATE_PLAYING))
             return 1;
 
         /* Listen to the bus */

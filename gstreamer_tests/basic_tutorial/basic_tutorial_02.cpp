@@ -1,6 +1,6 @@
 #include "options.h"
 
-#include "Gst/Pipeline.h"
+#include "Gst/Element.h"
 
 namespace Test
 {
@@ -8,13 +8,12 @@ namespace Test
     {
         GstBus* bus;
         GstMessage* msg;
-        GstStateChangeReturn ret;
 
         /* Initialize GStreamer */
         gst_init(options.ArgcPtr(), options.ArgvPtr());
 
-        Gst::Pipeline pipeline;
-        if (!pipeline.InitNew("test-pipeline"))
+        Gst::Element pipeline;
+        if (!pipeline.PipelineNew("test-pipeline"))
             return 1;
 
         /* Create the elements */
@@ -38,7 +37,7 @@ namespace Test
         /* Modify the source's properties */
         g_object_set(source, "pattern", 0, NULL);
 
-        if (!pipeline.Play())
+        if (!pipeline.SetState(GST_STATE_PLAYING))
             return 1;
 
         /* Wait until error or EOS */
