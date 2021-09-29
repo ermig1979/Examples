@@ -1,0 +1,17 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "cppgdb",
+      "name": "deepstream-test1-app",
+      "project": "CMakeLists.txt",
+      "projectTarget": "deepstream-test1-app",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream-test1",
+      "args": [ "/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_720p.mp4" ],
+      "env": {}
+    }
+  ]
+}
