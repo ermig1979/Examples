@@ -117,16 +117,17 @@ osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info,
     return GST_PAD_PROBE_OK;
 }
 
-static gboolean
-bus_call (GstBus * bus, GstMessage * msg, gpointer data)
+static gboolean bus_call (GstBus * bus, GstMessage * msg, gpointer data)
 {
   GMainLoop *loop = (GMainLoop *) data;
-  switch (GST_MESSAGE_TYPE (msg)) {
+  switch (GST_MESSAGE_TYPE (msg)) 
+  {
     case GST_MESSAGE_EOS:
       g_print ("End of stream\n");
       g_main_loop_quit (loop);
       break;
-    case GST_MESSAGE_ERROR:{
+    case GST_MESSAGE_ERROR:
+    {
       gchar *debug;
       GError *error;
       gst_message_parse_error (msg, &error, &debug);
@@ -145,8 +146,38 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
   return TRUE;
 }
 
-int
-main (int argc, char *argv[])
+struct KeyboardData
+{
+    GstElement* pipeline;
+    GMainLoop* loop;
+};
+
+static gboolean handle_keyboard(GIOChannel* source, GIOCondition cond, KeyboardData * data)
+{
+    gchar* str = NULL;
+
+    if (g_io_channel_read_line(source, &str, NULL, NULL, NULL) != G_IO_STATUS_NORMAL) 
+    {
+        return TRUE;
+    }
+
+    switch (g_ascii_tolower(str[0])) 
+    {
+    case 'q':
+        g_printerr("Key 'q' is pressed. Try to stop pipeline.\n");
+        gst_element_set_state(data->pipeline, GST_STATE_NULL);
+        g_main_loop_quit(data->loop);
+        break;
+    default:
+        break;
+    }
+
+    g_free(str);
+
+    return TRUE;
+}
+
+int main (int argc, char *argv[])
 {
   GMainLoop *loop = NULL;
   GstElement *pipeline = NULL, *source = NULL, *h264parser = NULL,
@@ -236,7 +267,6 @@ main (int argc, char *argv[])
   if (access(pgie_config, F_OK) == -1)
   {
       system("pwd");
-      system("ls");
       g_printerr("File '%s' is not exist!\n", pgie_config);
       return -1;
   }
@@ -246,6 +276,13 @@ main (int argc, char *argv[])
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
   bus_watch_id = gst_bus_add_watch (bus, bus_call, loop);
   gst_object_unref (bus);
+
+  KeyboardData keyboardData;
+  keyboardData.pipeline = pipeline;
+  keyboardData.loop = loop;
+  GIOChannel* io_stdin;
+  io_stdin = g_io_channel_unix_new(fileno(stdin));
+  g_io_add_watch(io_stdin, G_IO_IN, (GIOFunc)handle_keyboard, &keyboardData);
 
   /* Set up the pipeline */
   /* we add all elements into the pipeline */
@@ -333,6 +370,7 @@ main (int argc, char *argv[])
   g_print ("Deleting pipeline\n");
   gst_object_unref (GST_OBJECT (pipeline));
   g_source_remove (bus_watch_id);
+  g_io_channel_unref(io_stdin);
   g_main_loop_unref (loop);
   return 0;
 }
