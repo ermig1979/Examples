@@ -27,11 +27,9 @@ include_directories(${CUDA_DIR}/include)
 add_executable(${APP_NAME} ${APP_C_SRC} ${APP_CPP_SRC})
 target_link_libraries(${APP_NAME} ${GST_LIBRARIES} -L${CUDA_DIR}/lib64/ -lcudart -L${LIB_INSTALL_DIR} -lnvdsgst_meta -lnvds_meta -lcuda -Wl,-rpath,${LIB_INSTALL_DIR})
 
-add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy 
-     "${CMAKE_BINARY_DIR}/${APP_NAME}"
-     "${NVDS_DIR}/sources/apps/sample_apps/deepstream-test1" 
+add_custom_command(TARGET ${APP_NAME} POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_BINARY_DIR}/${APP_NAME}" "${NVDS_DIR}/sources/apps/sample_apps/deepstream-test1" 
   COMMENT "Copying binaries to working directory")
-#file(COPY ${CMAKE_BINARY_DIR}/${APP_NAME} DESTINATION ${NVDS_DIR}/sources/apps/sample_apps/deepstream-test1)
+
 
 
 

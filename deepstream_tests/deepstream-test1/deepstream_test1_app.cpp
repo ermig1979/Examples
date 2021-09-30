@@ -27,6 +27,8 @@
 #include <cuda_runtime_api.h>
 #include "gstnvdsmeta.h"
 
+#include "Gst/Args.h"
+
 #define MAX_DISPLAY_LEN 64
 
 #define PGIE_CLASS_ID_VEHICLE 0
@@ -43,16 +45,12 @@
 #define MUXER_BATCH_TIMEOUT_USEC 40000
 
 gint frame_number = 0;
-gchar pgie_classes_str[4][32] = { "Vehicle", "TwoWheeler", "Person",
-  "Roadsign"
-};
+gchar pgie_classes_str[4][32] = { "Vehicle", "TwoWheeler", "Person", "Roadsign" };
 
 /* osd_sink_pad_buffer_probe  will extract metadata received on OSD sink pad
  * and update params for drawing rectangle, object information etc. */
 
-static GstPadProbeReturn
-osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info,
-    gpointer u_data)
+static GstPadProbeReturn osd_sink_pad_buffer_probe (GstPad * pad, GstPadProbeInfo * info, gpointer u_data)
 {
     GstBuffer *buf = (GstBuffer *) info->data;
     guint num_rects = 0; 
@@ -194,7 +192,8 @@ int main (int argc, char *argv[])
   struct cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, current_device);
   /* Check input arguments */
-  if (argc != 2) {
+  if (argc != 2) 
+  {
     g_printerr ("Usage: %s <H264 filename>\n", argv[0]);
     return -1;
   }
@@ -220,7 +219,8 @@ int main (int argc, char *argv[])
   /* Create nvstreammux instance to form batches from one or more sources. */
   streammux = gst_element_factory_make ("nvstreammux", "stream-muxer");
 
-  if (!pipeline || !streammux) {
+  if (!pipeline || !streammux) 
+  {
     g_printerr ("One element could not be created. Exiting.\n");
     return -1;
   }
@@ -236,7 +236,8 @@ int main (int argc, char *argv[])
   nvosd = gst_element_factory_make ("nvdsosd", "nv-onscreendisplay");
 
   /* Finally render the osd output */
-  if(prop.integrated) {
+  if(prop.integrated) 
+  {
     transform = gst_element_factory_make ("nvegltransform", "nvegl-transform");
   }
   sink = gst_element_factory_make ("nveglglessink", "nvvideo-renderer");
