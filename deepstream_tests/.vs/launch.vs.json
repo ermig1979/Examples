@@ -5,7 +5,7 @@
     {
       "type": "cppgdb",
       "name": "deepstream-test1-app",
-      "project": "CMakeLists.txt",
+      "project": "deepstream-test1\\CMakeLists.txt",
       "projectTarget": "deepstream-test1-app",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",

@@ -23,6 +23,7 @@ file(GLOB APP_CPP_SRC ./*.cpp)
 
 include_directories(${NVDS_DIR}/sources/includes)
 include_directories(${CUDA_DIR}/include)
+include_directories(..)
 
 add_executable(${APP_NAME} ${APP_C_SRC} ${APP_CPP_SRC})
 target_link_libraries(${APP_NAME} ${GST_LIBRARIES} -L${CUDA_DIR}/lib64/ -lcudart -L${LIB_INSTALL_DIR} -lnvdsgst_meta -lnvds_meta -lcuda -Wl,-rpath,${LIB_INSTALL_DIR})
