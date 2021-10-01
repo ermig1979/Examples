@@ -13,6 +13,11 @@ namespace Gst
         {
         }
 
+        ~Pipeline()
+        {
+            Release();
+        }        
+        
         bool InitFromFile(const String& path)
         {
             String description = "playbin uri=file:///" + path;
@@ -36,18 +41,27 @@ namespace Gst
             return true;
         }
 
-        ~Pipeline()
+        bool Release(bool comment = false)
         {
             if (_pipeline)
             {
                 if (_playing)
                 {
+                    if(comment)
+                        std::cout << "Stop playback: ";
                     GstStateChangeReturn state = gst_element_set_state(_pipeline, GST_STATE_NULL);
                     if (state == GST_STATE_CHANGE_FAILURE)
                         std::cout << "Can't stop pipeline!" << std::endl;
+                    else if (comment)
+                        std::cout << " OK. " << std::endl;
+                    _playing = false;
                 }
+                if (comment)
+                    std::cout << "Delete pipeline." << std::endl;
                 gst_object_unref(_pipeline);
+                _pipeline = NULL;
             }
+            return _pipeline == NULL;
         }
 
         bool Play()
