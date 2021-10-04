@@ -77,7 +77,7 @@ namespace Gst
             return _playing;
         }
 
-        GstElement* Handler()
+        GstElement* Handle()
         {
             return _pipeline;
         }

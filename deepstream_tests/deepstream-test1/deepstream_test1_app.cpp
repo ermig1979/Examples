@@ -28,6 +28,7 @@
 #include "gstnvdsmeta.h"
 
 #include "Gst/Pipeline.h"
+#include "Gst/Element.h"
 
 #define MAX_DISPLAY_LEN 64
 
@@ -178,10 +179,9 @@ static gboolean handle_keyboard(GIOChannel* source, GIOCondition cond, KeyboardD
 int main(int argc, char* argv[])
 {
     Gst::Pipeline pipeline;
-        GMainLoop* loop = NULL;
-    GstElement * source = NULL, * h264parser = NULL,
-        * decoder = NULL, * streammux = NULL, * sink = NULL, * pgie = NULL, * nvvidconv = NULL,
-        * nvosd = NULL;
+    GMainLoop* loop = NULL;
+    Gst::Element source, h264parser, decoder, streammux;
+    GstElement * sink = NULL, * pgie = NULL, * nvvidconv = NULL, * nvosd = NULL;
 
     GstElement* transform = NULL;
     GstBus* bus = NULL;
@@ -209,23 +209,21 @@ int main(int argc, char* argv[])
         return -1;
 
     /* Source element for reading from the file */
-    source = gst_element_factory_make("filesrc", "file-source");
+    if (!source.FactoryMake("filesrc", "file-source"))
+        return -1;
 
     /* Since the data format in the input file is elementary h264 stream,
      * we need a h264parser */
-    h264parser = gst_element_factory_make("h264parse", "h264-parser");
+    if (!h264parser.FactoryMake("h264parse", "h264-parser"))
+        return -1;
 
     /* Use nvdec_h264 for hardware accelerated decode on GPU */
-    decoder = gst_element_factory_make("nvv4l2decoder", "nvv4l2-decoder");
+    if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+        return -1;
 
     /* Create nvstreammux instance to form batches from one or more sources. */
-    streammux = gst_element_factory_make("nvstreammux", "stream-muxer");
-
-    if (!streammux)
-    {
-        g_printerr("One element could not be created. Exiting.\n");
+    if (!streammux.FactoryMake("nvstreammux", "stream-muxer"))
         return -1;
-    }
 
     /* Use nvinfer to run inferencing on decoder's output,
      * behaviour of inferencing is set through config file */
@@ -244,8 +242,7 @@ int main(int argc, char* argv[])
     }
     sink = gst_element_factory_make("nveglglessink", "nvvideo-renderer");
 
-    if (!source || !h264parser || !decoder || !pgie
-        || !nvvidconv || !nvosd || !sink) {
+    if (!pgie || !nvvidconv || !nvosd || !sink) {
         g_printerr("One element could not be created. Exiting.\n");
         return -1;
     }
@@ -256,13 +253,12 @@ int main(int argc, char* argv[])
     }
 
     /* we set the input filename to the source element */
-    g_object_set(G_OBJECT(source), "location", argv[1], NULL);
+    source.Set("location", argv[1]);
 
-    g_object_set(G_OBJECT(streammux), "batch-size", 1, NULL);
-
-    g_object_set(G_OBJECT(streammux), "width", MUXER_OUTPUT_WIDTH, "height",
-        MUXER_OUTPUT_HEIGHT,
-        "batched-push-timeout", MUXER_BATCH_TIMEOUT_USEC, NULL);
+    streammux.Set("batch-size", 1);
+    streammux.Set("width", MUXER_OUTPUT_WIDTH);
+    streammux.Set("height", MUXER_OUTPUT_HEIGHT);
+    streammux.Set("batched-push-timeout", MUXER_BATCH_TIMEOUT_USEC);
 
     /* Set all the necessary properties of the nvinfer element,
      * the necessary ones are : */
@@ -276,12 +272,12 @@ int main(int argc, char* argv[])
     g_object_set(G_OBJECT(pgie), "config-file-path", pgie_config, NULL);
 
     /* we add a message handler */
-    bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.Handler()));
+    bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.Handle()));
     bus_watch_id = gst_bus_add_watch(bus, bus_call, loop);
     gst_object_unref(bus);
 
     KeyboardData keyboardData;
-    keyboardData.pipeline = pipeline.Handler();
+    keyboardData.pipeline = pipeline.Handle();
     keyboardData.loop = loop;
     GIOChannel* io_stdin;
     io_stdin = g_io_channel_unix_new(fileno(stdin));
@@ -289,60 +285,69 @@ int main(int argc, char* argv[])
 
     /* Set up the pipeline */
     /* we add all elements into the pipeline */
-    if (prop.integrated) {
-        gst_bin_add_many(GST_BIN(pipeline.Handler()),
-            source, h264parser, decoder, streammux, pgie,
+    if (prop.integrated)
+    {
+        gst_bin_add_many(GST_BIN(pipeline.Handle()),
+            source.Handle(), h264parser.Handle(), decoder.Handle(), streammux.Handle(), pgie,
             nvvidconv, nvosd, transform, sink, NULL);
     }
-    else {
-        gst_bin_add_many(GST_BIN(pipeline.Handler()),
-            source, h264parser, decoder, streammux, pgie,
+    else
+    {
+        gst_bin_add_many(GST_BIN(pipeline.Handle()),
+            source.Handle(), h264parser.Handle(), decoder.Handle(), streammux.Handle(), pgie,
             nvvidconv, nvosd, sink, NULL);
     }
 
-    GstPad* sinkpad, * srcpad;
-    gchar pad_name_sink[16] = "sink_0";
-    gchar pad_name_src[16] = "src";
+    {
+        GstPad* sinkpad, * srcpad;
+        gchar pad_name_sink[16] = "sink_0";
+        gchar pad_name_src[16] = "src";
 
-    sinkpad = gst_element_get_request_pad(streammux, pad_name_sink);
-    if (!sinkpad) {
-        g_printerr("Streammux request sink pad failed. Exiting.\n");
-        return -1;
+        sinkpad = gst_element_get_request_pad(streammux.Handle(), pad_name_sink);
+        if (!sinkpad) {
+            g_printerr("Streammux request sink pad failed. Exiting.\n");
+            return -1;
+        }
+
+        srcpad = gst_element_get_static_pad(decoder.Handle(), pad_name_src);
+        if (!srcpad) {
+            g_printerr("Decoder request src pad failed. Exiting.\n");
+            return -1;
+        }
+
+        if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK) {
+            g_printerr("Failed to link decoder to stream muxer. Exiting.\n");
+            return -1;
+        }
+
+        gst_object_unref(sinkpad);
+        gst_object_unref(srcpad);
     }
-
-    srcpad = gst_element_get_static_pad(decoder, pad_name_src);
-    if (!srcpad) {
-        g_printerr("Decoder request src pad failed. Exiting.\n");
-        return -1;
-    }
-
-    if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK) {
-        g_printerr("Failed to link decoder to stream muxer. Exiting.\n");
-        return -1;
-    }
-
-    gst_object_unref(sinkpad);
-    gst_object_unref(srcpad);
 
     /* we link the elements together */
     /* file-source -> h264-parser -> nvh264-decoder ->
      * nvinfer -> nvvidconv -> nvosd -> video-renderer */
 
-    if (!gst_element_link_many(source, h264parser, decoder, NULL)) {
+    if (!gst_element_link_many(source.Handle(), h264parser.Handle(), decoder.Handle(), NULL))
+    {
         g_printerr("Elements could not be linked: 1. Exiting.\n");
         return -1;
     }
 
-    if (prop.integrated) {
-        if (!gst_element_link_many(streammux, pgie,
-            nvvidconv, nvosd, transform, sink, NULL)) {
+    if (prop.integrated) 
+    {
+        if (!gst_element_link_many(streammux.Handle(), pgie,
+            nvvidconv, nvosd, transform, sink, NULL)) 
+        {
             g_printerr("Elements could not be linked: 2. Exiting.\n");
             return -1;
         }
     }
-    else {
-        if (!gst_element_link_many(streammux, pgie,
-            nvvidconv, nvosd, sink, NULL)) {
+    else 
+    {
+        if (!gst_element_link_many(streammux.Handle(), pgie,
+            nvvidconv, nvosd, sink, NULL)) 
+        {
             g_printerr("Elements could not be linked: 2. Exiting.\n");
             return -1;
         }

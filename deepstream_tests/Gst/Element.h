@@ -73,7 +73,21 @@ namespace Gst
             return true;
         }
 
-        GstElement* Handler()
+        bool Set(const String & name, const String& value)
+        {
+            g_object_set(G_OBJECT(_element), name.c_str(), value.c_str(), NULL);
+
+            return true;
+        }
+
+        bool Set(const String& name, int value)
+        {
+            g_object_set(G_OBJECT(_element), name.c_str(), value, NULL);
+
+            return true;
+        }
+
+        GstElement* Handle()
         {
             return _element;
         }
