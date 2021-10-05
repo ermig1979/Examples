@@ -48,16 +48,16 @@ namespace Gst
                 if (_playing)
                 {
                     if(comment)
-                        std::cout << "Stop playback: ";
+                        std::cout << "Stop playback: " << std::flush;
                     GstStateChangeReturn state = gst_element_set_state(_pipeline, GST_STATE_NULL);
                     if (state == GST_STATE_CHANGE_FAILURE)
-                        std::cout << "Can't stop pipeline!" << std::endl;
+                        std::cout << "Can't stop pipeline!" << std::endl << std::flush;
                     else if (comment)
-                        std::cout << " OK. " << std::endl;
+                        std::cout << " OK. " << std::endl << std::flush;
                     _playing = false;
                 }
                 if (comment)
-                    std::cout << "Delete pipeline." << std::endl;
+                    std::cout << "Delete pipeline." << std::endl << std::flush;
                 gst_object_unref(_pipeline);
                 _pipeline = NULL;
             }

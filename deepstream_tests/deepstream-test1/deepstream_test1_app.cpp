@@ -142,6 +142,13 @@ static gboolean bus_call(GstBus* bus, GstMessage* msg, gpointer data)
     default:
         break;
     }
+#if 1
+    std::cout << "Message: ";
+    std::cout << " type = " << msg->type;
+    std::cout << " src = " << msg->src->name;
+    std::cout << std::endl << std::flush;
+
+#endif
     return TRUE;
 }
 
@@ -164,8 +171,8 @@ static gboolean handle_keyboard(GIOChannel* source, GIOCondition cond, KeyboardD
     {
     case 'q':
         g_printerr("Key 'q' is pressed. Try to stop pipeline.\n");
-        gst_element_set_state(data->pipeline, GST_STATE_NULL);
         g_main_loop_quit(data->loop);
+        //gst_element_set_state(data->pipeline, GST_STATE_NULL);
         break;
     default:
         break;
@@ -180,10 +187,8 @@ int main(int argc, char* argv[])
 {
     Gst::Pipeline pipeline;
     GMainLoop* loop = NULL;
-    Gst::Element source, h264parser, decoder, streammux;
-    GstElement * sink = NULL, * pgie = NULL, * nvvidconv = NULL, * nvosd = NULL;
+    Gst::Element source, qtdemux, h264parser, decoder, streammux, sink, pgie, nvvidconv, nvosd;
 
-    GstElement* transform = NULL;
     GstBus* bus = NULL;
     guint bus_watch_id;
     GstPad* osd_sink_pad = NULL;
@@ -212,6 +217,9 @@ int main(int argc, char* argv[])
     if (!source.FactoryMake("filesrc", "file-source"))
         return -1;
 
+    if (!qtdemux.FactoryMake("qtdemux", "qtdemux"))
+        return -1;
+    
     /* Since the data format in the input file is elementary h264 stream,
      * we need a h264parser */
     if (!h264parser.FactoryMake("h264parse", "h264-parser"))
@@ -220,6 +228,8 @@ int main(int argc, char* argv[])
     /* Use nvdec_h264 for hardware accelerated decode on GPU */
     if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
         return -1;
+    //if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
+    //    return -1;
 
     /* Create nvstreammux instance to form batches from one or more sources. */
     if (!streammux.FactoryMake("nvstreammux", "stream-muxer"))
@@ -227,30 +237,20 @@ int main(int argc, char* argv[])
 
     /* Use nvinfer to run inferencing on decoder's output,
      * behaviour of inferencing is set through config file */
-    pgie = gst_element_factory_make("nvinfer", "primary-nvinference-engine");
+    if (!pgie.FactoryMake("nvinfer", "primary-nvinference-engine"))
+        return -1;
 
     /* Use convertor to convert from NV12 to RGBA as required by nvosd */
-    nvvidconv = gst_element_factory_make("nvvideoconvert", "nvvideo-converter");
+    if (!nvvidconv.FactoryMake("nvvideoconvert", "nvvideo-converter"))
+        return -1;
 
     /* Create OSD to draw on the converted RGBA buffer */
-    nvosd = gst_element_factory_make("nvdsosd", "nv-onscreendisplay");
+    if (!nvosd.FactoryMake("nvdsosd", "nv-onscreendisplay"))
+        return -1;
 
     /* Finally render the osd output */
-    if (prop.integrated)
-    {
-        transform = gst_element_factory_make("nvegltransform", "nvegl-transform");
-    }
-    sink = gst_element_factory_make("nveglglessink", "nvvideo-renderer");
-
-    if (!pgie || !nvvidconv || !nvosd || !sink) {
-        g_printerr("One element could not be created. Exiting.\n");
+    if (!sink.FactoryMake("fakesink", "fake-sink"))//"nveglglessink", "nvvideo-renderer"))
         return -1;
-    }
-
-    if (!transform && prop.integrated) {
-        g_printerr("One tegra element could not be created. Exiting.\n");
-        return -1;
-    }
 
     /* we set the input filename to the source element */
     source.Set("location", argv[1]);
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
         g_printerr("File '%s' is not exist!\n", pgie_config);
         return -1;
     }
-    g_object_set(G_OBJECT(pgie), "config-file-path", pgie_config, NULL);
+    pgie.Set("config-file-path", pgie_config);
 
     /* we add a message handler */
     bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.Handle()));
@@ -285,84 +285,61 @@ int main(int argc, char* argv[])
 
     /* Set up the pipeline */
     /* we add all elements into the pipeline */
-    if (prop.integrated)
-    {
-        gst_bin_add_many(GST_BIN(pipeline.Handle()),
-            source.Handle(), h264parser.Handle(), decoder.Handle(), streammux.Handle(), pgie,
-            nvvidconv, nvosd, transform, sink, NULL);
-    }
-    else
-    {
-        gst_bin_add_many(GST_BIN(pipeline.Handle()),
-            source.Handle(), h264parser.Handle(), decoder.Handle(), streammux.Handle(), pgie,
-            nvvidconv, nvosd, sink, NULL);
-    }
+    gst_bin_add_many(GST_BIN(pipeline.Handle()),
+        source.Handle(), /*qtdemux.Handle(), */h264parser.Handle(), decoder.Handle(), /*streammux.Handle(), */sink.Handle(), NULL);
+        //pgie.Handle(), nvvidconv.Handle(), nvosd.Handle(), NULL);
 
-    {
-        GstPad* sinkpad, * srcpad;
-        gchar pad_name_sink[16] = "sink_0";
-        gchar pad_name_src[16] = "src";
+    //GstPad* sinkpad, * srcpad;
+    //gchar pad_name_sink[16] = "sink_0";
+    //gchar pad_name_src[16] = "src";
 
-        sinkpad = gst_element_get_request_pad(streammux.Handle(), pad_name_sink);
-        if (!sinkpad) {
-            g_printerr("Streammux request sink pad failed. Exiting.\n");
-            return -1;
-        }
+    //sinkpad = gst_element_get_request_pad(streammux.Handle(), pad_name_sink);
+    //if (!sinkpad) {
+    //    g_printerr("Streammux request sink pad failed. Exiting.\n");
+    //    return -1;
+    //}
 
-        srcpad = gst_element_get_static_pad(decoder.Handle(), pad_name_src);
-        if (!srcpad) {
-            g_printerr("Decoder request src pad failed. Exiting.\n");
-            return -1;
-        }
+    //srcpad = gst_element_get_static_pad(decoder.Handle(), pad_name_src);
+    //if (!srcpad) {
+    //    g_printerr("Decoder request src pad failed. Exiting.\n");
+    //    return -1;
+    //}
 
-        if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK) {
-            g_printerr("Failed to link decoder to stream muxer. Exiting.\n");
-            return -1;
-        }
+    //if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK) {
+    //    g_printerr("Failed to link decoder to stream muxer. Exiting.\n");
+    //    return -1;
+    //}
 
-        gst_object_unref(sinkpad);
-        gst_object_unref(srcpad);
-    }
+    //gst_object_unref(sinkpad);
+    //gst_object_unref(srcpad);
 
     /* we link the elements together */
     /* file-source -> h264-parser -> nvh264-decoder ->
      * nvinfer -> nvvidconv -> nvosd -> video-renderer */
 
-    if (!gst_element_link_many(source.Handle(), h264parser.Handle(), decoder.Handle(), NULL))
+    if (!gst_element_link_many(source.Handle(), /*qtdemux.Handle(), */h264parser.Handle(), decoder.Handle(), sink.Handle(), NULL))
     {
         g_printerr("Elements could not be linked: 1. Exiting.\n");
         return -1;
     }
 
-    if (prop.integrated) 
-    {
-        if (!gst_element_link_many(streammux.Handle(), pgie,
-            nvvidconv, nvosd, transform, sink, NULL)) 
-        {
-            g_printerr("Elements could not be linked: 2. Exiting.\n");
-            return -1;
-        }
-    }
-    else 
-    {
-        if (!gst_element_link_many(streammux.Handle(), pgie,
-            nvvidconv, nvosd, sink, NULL)) 
-        {
-            g_printerr("Elements could not be linked: 2. Exiting.\n");
-            return -1;
-        }
-    }
+    //if (!gst_element_link_many(streammux.Handle(), sink.Handle(), NULL))
+    //    //pgie.Handle(), nvvidconv.Handle(), nvosd.Handle(), NULL))
+    //{
+    //    g_printerr("Elements could not be linked: 2. Exiting.\n");
+    //    return -1;
+    //}
 
     /* Lets add probe to get informed of the meta data generated, we add probe to
      * the sink pad of the osd element, since by that time, the buffer would have
      * had got all the metadata. */
-    osd_sink_pad = gst_element_get_static_pad(nvosd, "sink");
-    if (!osd_sink_pad)
-        g_print("Unable to get sink pad\n");
-    else
-        gst_pad_add_probe(osd_sink_pad, GST_PAD_PROBE_TYPE_BUFFER,
-            osd_sink_pad_buffer_probe, NULL, NULL);
-    gst_object_unref(osd_sink_pad);
+    //osd_sink_pad = gst_element_get_static_pad(nvosd.Handle(), "sink");
+    //if (!osd_sink_pad)
+    //    g_print("Unable to get sink pad\n");
+    //else
+    //    gst_pad_add_probe(osd_sink_pad, GST_PAD_PROBE_TYPE_BUFFER,
+    //        osd_sink_pad_buffer_probe, NULL, NULL);
+    //gst_object_unref(osd_sink_pad);
 
     /* Set the pipeline to "playing" state */
     g_print("Now playing: %s\n", argv[1]);

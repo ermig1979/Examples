@@ -25,6 +25,7 @@ namespace Gst
                         std::cout << "Can't set element state!" << std::endl;
                 }
                 gst_object_unref(_element);
+                _element = NULL;
             }
         }
 
