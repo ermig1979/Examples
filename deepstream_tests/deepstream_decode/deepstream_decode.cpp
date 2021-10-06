@@ -29,86 +29,8 @@
 
 #include "Gst/Pipeline.h"
 #include "Gst/Element.h"
-
-struct Context
-{
-    GMainLoop* loop;
-    int debugLevel;
-};
-
-static gboolean bus_call(GstBus* bus, GstMessage* msg, gpointer data)
-{
-    GMainLoop* loop = (GMainLoop*)data;
-    switch (GST_MESSAGE_TYPE(msg))
-    {
-    case GST_MESSAGE_EOS:
-        g_print("End of stream\n");
-        g_main_loop_quit(loop);
-        break;
-    case GST_MESSAGE_ERROR:
-    {
-        gchar* debug;
-        GError* error;
-        gst_message_parse_error(msg, &error, &debug);
-        g_printerr("ERROR from element %s: %s\n",
-            GST_OBJECT_NAME(msg->src), error->message);
-        if (debug)
-            g_printerr("Error details: %s\n", debug);
-        g_free(debug);
-        g_error_free(error);
-        g_main_loop_quit(loop);
-        break;
-    }
-    default:
-        break;
-    }
-#if 0
-    std::cout << "Message: ";
-    std::cout << " type = " << msg->type;
-    std::cout << " src = " << msg->src->name;
-    std::cout << std::endl << std::flush;
-
-#endif
-    return TRUE;
-}
-
-static void on_pad_added(GstElement* element, GstPad* pad, gpointer data)
-{
-    GstPad* sinkpad;
-    GstElement* decoder = (GstElement*)data;
-
-    /* We can now link this pad with the its corresponding sink pad */
-    g_print("Dynamic pad created, linking demuxer/decoder. Element: %s", element->object.name);
-    sinkpad = gst_element_get_static_pad(decoder, "sink");
-    GstPadLinkReturn padLinkReturn = gst_pad_link(pad, sinkpad);
-    if (padLinkReturn != GST_PAD_LINK_OK)
-    {
-        g_print("Error: Can't link %s and %s (error = %d) !\n", element->object.name, decoder->object.name, padLinkReturn);
-        return;
-    }
-    gst_object_unref(sinkpad);
-    g_print("OK. \n", element->object.name);
-}
-
-static void linkElements(GstElement* element, GstPad* sourcePad, gpointer data) 
-{
-    GstElement* sinkElement = (GstElement*)data;
-    g_print("Link: %s and %s: ", element->object.name, sinkElement->object.name);
-    GstPad * sinkPad = gst_element_get_static_pad(sinkElement, "sink");
-    if (sinkPad == NULL)
-    {
-        g_print("gst_element_get_static_pad return NULL!\n");
-        return;
-    }
-    GstPadLinkReturn padLinkReturn = gst_pad_link(sourcePad, sinkPad);
-    if (padLinkReturn != GST_PAD_LINK_OK)
-    {
-        g_print("Error: Can't link %s and %s (error = %d) !\n", element->object.name, sinkElement->object.name, padLinkReturn);
-        return;
-    }
-    gst_object_unref(sinkPad);
-    g_print("OK. \n", element->object.name);
-}
+#include "Gst/Options.h"
+#include "Gst/Utils.h"
 
 struct KeyboardData
 {
@@ -354,6 +276,8 @@ int main(int argc, char* argv[])
     g_main_loop_unref(loop);
     return 0;
 #else
+    Gst::Options options(argc, argv);
+
     GMainLoop* loop;
 
     GstElement* pipeline, * source, * demuxer, * parser, * decoder, * sink;
@@ -365,10 +289,10 @@ int main(int argc, char* argv[])
     loop = g_main_loop_new(NULL, FALSE);
 
     /* Check input arguments */
-    if (argc != 2) {
-        g_printerr("Usage: %s <mpegts filename>\n", argv[0]);
-        return -1;
-    }
+    //if (argc < 2) {
+    //    g_printerr("Usage: %s <mpegts filename>\n", argv[0]);
+    //    return -1;
+    //}
 
     /* Create gstreamer elements */
     pipeline = gst_pipeline_new("video-player");
@@ -378,7 +302,7 @@ int main(int argc, char* argv[])
     }
 
     source = gst_element_factory_make("filesrc", "file-source");
-    demuxer = gst_element_factory_make("qtdemux", "qt-demux");
+    demuxer = gst_element_factory_make("qtdemux", "qt-demuxer");
     parser = gst_element_factory_make("h264parse", "h264parse-decoder");
 
     //decoder = gst_element_factory_make("avdec_h264", "avdec_h264-decoder");
@@ -396,11 +320,11 @@ int main(int argc, char* argv[])
     /* Set up the pipeline */
 
     /* set the input filename to the source element */
-    g_object_set(G_OBJECT(source), "location", argv[1], NULL);
+    g_object_set(G_OBJECT(source), "location", options.source.c_str(), NULL);
 
     /* add a message handler */
     bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
-    bus_watch_id = gst_bus_add_watch(bus, bus_call, loop);
+    bus_watch_id = gst_bus_add_watch(bus, Gst::BusCallback, loop);
     gst_object_unref(bus);
 
     /* add all elements into the pipeline: file-source | ts-demuxer | h264parse | decoder | video-output */
@@ -412,10 +336,11 @@ int main(int argc, char* argv[])
     */
     gst_element_link(source, demuxer);
     gst_element_link_many(parser, decoder, sink, NULL);
-    g_signal_connect(demuxer, "pad-added", G_CALLBACK(linkElements), parser); // link dynamic pad
+    //g_signal_connect(demuxer, "pad-added", G_CALLBACK(LinkElements), parser); // link dynamic pad
+    g_signal_connect_data(demuxer, "pad-added", G_CALLBACK(Gst::LinkElements), parser, NULL, GConnectFlags(0));
 
     /* Set the pipeline to "playing" state*/
-    g_print("Now playing: %s\n", argv[1]);
+    g_print("Now playing: %s\n", options.source.c_str());
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
     /* Iterate */

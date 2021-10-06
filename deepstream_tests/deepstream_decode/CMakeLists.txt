@@ -19,14 +19,14 @@ set(LIB_INSTALL_DIR "${NVDS_DIR}/lib/")
 set(APP_INSTALL_DIR "${NVDS_DIR}/bin/")
 set(WORK_DIR "${NVDS_DIR}/sources/apps/sample_apps/${APP_NAME}")
 
-file(GLOB APP_C_SRC ./*.c)
-file(GLOB APP_CPP_SRC ./*.cpp)
+file(GLOB APP_SRC ./*.cpp)
+file(GLOB GST_SRC ../Gst/*.cpp)
 
 include_directories(${NVDS_DIR}/sources/includes)
 include_directories(${CUDA_DIR}/include)
 include_directories(..)
 
-add_executable(${APP_NAME} ${APP_C_SRC} ${APP_CPP_SRC})
+add_executable(${APP_NAME} ${APP_SRC} ${GST_SRC})
 target_link_libraries(${APP_NAME} ${GST_LIBRARIES} -L${CUDA_DIR}/lib64/ -lcudart -L${LIB_INSTALL_DIR} -lnvdsgst_meta -lnvds_meta -lcuda -Wl,-rpath,${LIB_INSTALL_DIR})
 
 #add_custom_target(build-time-make-directory ALL COMMAND ${CMAKE_COMMAND} -E make_directory ${directory})

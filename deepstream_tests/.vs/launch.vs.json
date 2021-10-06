@@ -13,7 +13,7 @@
       "args": [ "/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4" ],
       "env": {}
     },
-	{
+    {
       "type": "cppgdb",
       "name": "deepstream_decode",
       "project": "deepstream_decode\\CMakeLists.txt",
@@ -21,7 +21,10 @@
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
-      "args": [ "/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4" ],
+      "args": [ 
+        "-s=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4", 
+        "-l=4" 
+      ],
       "env": {}
     }
   ]
