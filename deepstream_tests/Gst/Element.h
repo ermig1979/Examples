@@ -9,47 +9,30 @@ namespace Gst
     public:
         Element()
             : _element(NULL)
+            , _owner(false)
         {
         }
 
         ~Element()
         {
-            if (_element)
+            if (_element && 0)
             {
-                GstState state;
-                gst_element_get_state(_element, &state, NULL, GST_CLOCK_TIME_NONE);
-                if (state != GST_STATE_NULL)
+                if (Gst::logLevel >= Gst::LogDebug)
+                    std::cout << "Delete element '" << Name() << "'." << std::endl;
+                if (_owner)
                 {
-                    GstStateChangeReturn result = gst_element_set_state(_element, GST_STATE_NULL);
-                    if (result == GST_STATE_CHANGE_FAILURE)
-                        std::cout << "Can't set element state!" << std::endl;
+                    GstState state;
+                    gst_element_get_state(_element, &state, NULL, GST_CLOCK_TIME_NONE);
+                    if (state != GST_STATE_NULL)
+                    {
+                        GstStateChangeReturn result = gst_element_set_state(_element, GST_STATE_NULL);
+                        if (result == GST_STATE_CHANGE_FAILURE)
+                            std::cout << "Can't set element state!" << std::endl;
+                    }
+                    gst_object_unref(_element);
                 }
-                gst_object_unref(_element);
                 _element = NULL;
             }
-        }
-
-        bool PipelineFromFile(const String& path)
-        {
-            String description = "playbin uri=file:///" + path;
-            _element = gst_parse_launch(description.c_str(), NULL);
-            if (_element == NULL)
-            {
-                std::cout << "Can't init pipline by file '" << path << "' !" << std::endl;
-                return false;
-            }
-            return true;
-        }
-
-        bool PipelineNew(const String& name)
-        {
-            _element = gst_pipeline_new(name.c_str());
-            if (_element == NULL)
-            {
-                std::cout << "Can't init new pipeline '" << name << "' !" << std::endl;
-                return false;
-            }
-            return true;
         }
 
         bool FactoryMake(const String& factory, const String& element)
@@ -57,9 +40,12 @@ namespace Gst
             _element = gst_element_factory_make(factory.c_str(), element.c_str());
             if (_element == NULL)
             {
-                std::cout << "Factory '" << factory << "' can't make element '" << element << "' !" << std::endl;
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << "Factory '" << factory << "' can't make element '" << element << "' !" << std::endl;
                 return false;
             }
+            else
+                _owner = true;
             return true;
         }
 
@@ -68,7 +54,8 @@ namespace Gst
             GstStateChangeReturn result = gst_element_set_state(_element, state);
             if (result == GST_STATE_CHANGE_FAILURE)
             {
-                std::cout << "Can't set state " << state << " !" << std::endl;
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << "Can't set state " << state << " !" << std::endl;
                 return false;
             }
             return true;
@@ -76,15 +63,17 @@ namespace Gst
 
         bool Set(const String & name, const String& value)
         {
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Element '" << Name() << "' set property '" << name << "' to '" << value << "'." << std::endl;
             g_object_set(G_OBJECT(_element), name.c_str(), value.c_str(), NULL);
-
             return true;
         }
 
         bool Set(const String& name, int value)
         {
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Element '" << Name() << "' set property '" << name << "' to '" << value << "'." << std::endl;
             g_object_set(G_OBJECT(_element), name.c_str(), value, NULL);
-
             return true;
         }
 
@@ -93,7 +82,13 @@ namespace Gst
             return _element;
         }
 
-    private:
+        String Name() const
+        {
+            return _element ? _element->object.name : "";
+        }
+
+    protected:
         GstElement* _element;
+        bool _owner;
     };
 }
