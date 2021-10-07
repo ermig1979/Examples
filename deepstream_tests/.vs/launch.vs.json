@@ -23,7 +23,7 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
       "args": [ 
         "-s=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4", 
-        "-l=4" 
+        "-l=3" 
       ],
       "env": {}
     }

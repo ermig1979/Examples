@@ -4,7 +4,11 @@
 
 namespace Gst
 {
-    gboolean BusCallback(GstBus* bus, GstMessage* msg, gpointer data);
+    struct Element;
 
-    void LinkElements(GstElement* element, GstPad* sourcePad, gpointer data);
+    bool StaticLink(Element& a, Element& b);
+
+    bool DynamicLink(Element & a, Element & b, const String & desc);
+
+    String StateToString(GstState state);
 }

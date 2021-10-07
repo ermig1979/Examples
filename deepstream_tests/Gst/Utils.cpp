@@ -1,58 +1,30 @@
 #include "Utils.h"
 #include "Options.h"
+#include "Element.h"
 
 namespace Gst
 {
-    gboolean BusCallback(GstBus* bus, GstMessage* msg, gpointer data)
+    bool StaticLink(Element& a, Element& b)
     {
-        GMainLoop* loop = (GMainLoop*)data;
-        String type;
-        switch (GST_MESSAGE_TYPE(msg))
+        if (gst_element_link(a.Handle(), b.Handle()) == FALSE)
         {
-        case GST_MESSAGE_EOS:
-            g_print("End of stream\n");
-            g_main_loop_quit(loop);
-            break;
-        case GST_MESSAGE_ERROR:
+            if (Gst::logLevel >= Gst::LogError)
+                std::cout << "Can't link '" << a.Name() << "' and '" << b.Name() << "'!" << std::endl;
+            return false;
+        }
+        else
         {
-            gchar* debug;
-            GError* error;
-            gst_message_parse_error(msg, &error, &debug);
-            g_printerr("ERROR from element %s: %s\n",
-                GST_OBJECT_NAME(msg->src), error->message);
-            if (debug)
-                g_printerr("Error details: %s\n", debug);
-            g_free(debug);
-            g_error_free(error);
-            g_main_loop_quit(loop);
-            break;
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Link '" << a.Name() << "' and '" << b.Name() << "'." << std::endl;
+            return true;
         }
-        case GST_MESSAGE_STATE_CHANGED: type = "StateChanged"; break;
-        default:
-            break;
-        }
-        if (Gst::logLevel >= Gst::LogDebug)
-        {
-            std::cout << "Message: ";
-            if (type.empty())
-            {
-                std::cout << " src = " << msg->src->name;
-                std::cout << " type = " << msg->type;
-            }
-            else
-            {
-                std::cout << msg->src->name << " :  \t" << type;
-            }
-            std::cout << std::endl << std::flush;
-        }
-        return TRUE;
     }
 
-    void LinkElements(GstElement* element, GstPad* sourcePad, gpointer data)
+    static void DynamicLinkCallback(GstElement* element, GstPad* sourcePad, gpointer data)
     {
         GstElement* sinkElement = (GstElement*)data;
         if (Gst::logLevel >= Gst::LogDebug)
-            g_print("Link: %s and %s: ", element->object.name, sinkElement->object.name);
+            g_print("Dynamic link: %s and %s: ", element->object.name, sinkElement->object.name);
         GstPad* sinkPad = gst_element_get_static_pad(sinkElement, "sink");
         if (sinkPad == NULL)
         {
@@ -78,5 +50,24 @@ namespace Gst
         gst_object_unref(sinkPad);
         if (Gst::logLevel >= Gst::LogDebug)
             g_print("OK. \n", element->object.name);
+    }
+
+    bool DynamicLink(Element & a, Element & b, const String& desc)
+    {
+        gulong id = g_signal_connect_data(a.Handle(), desc.c_str(), G_CALLBACK(DynamicLinkCallback), b.Handle(), NULL, GConnectFlags(0));
+        if (id == 0 && Gst::logLevel >= Gst::LogError)
+            std::cout << "Can't set dynamic link between '" << a.Name() << "' and '" << b.Name() << "'!" << std::endl;
+        else
+        {
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Set dynamic link between '" << a.Name() << "' and '" << b.Name() << "'." << std::endl;
+        }
+        return id != 0;
+    }
+
+    String StateToString(GstState state)
+    {
+        String names[6] = { "Undefined", "Null", "Ready", "Paused", "Playing", "Unknown"};
+        return state >= GST_STATE_VOID_PENDING && state <= GST_STATE_PLAYING ? names[(int)state] : names[5];
     }
 }
