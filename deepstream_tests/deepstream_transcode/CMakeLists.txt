@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10) 
-project(deepstream_decode)
+project(deepstream_transcode)
 
 find_package(PkgConfig REQUIRED)
 
@@ -13,7 +13,7 @@ link_directories(${GST_LIBRARY_DIRS})
 set(CUDA_DIR "/usr/local/cuda-${CUDA_VER}")
 set(NVDS_DIR "/opt/nvidia/deepstream/deepstream-${NVDS_VER}")
 
-set(APP_NAME "deepstream_decode")
+set(APP_NAME "deepstream_transcode")
 
 set(LIB_INSTALL_DIR "${NVDS_DIR}/lib/")
 set(APP_INSTALL_DIR "${NVDS_DIR}/bin/")

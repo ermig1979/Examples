@@ -43,6 +43,23 @@
         "--gst-debug-level=0"
       ],
       "env": {}
+    },
+    {
+      "type": "cppgdb",
+      "name": "deepstream_transcode_file",
+      "project": "deepstream_transcode\\CMakeLists.txt",
+      "projectTarget": "deepstream_transcode",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
+      "args": [
+        "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--decoderType=soft",
+        "--output=~/output.mp4",
+        "--encoderType=soft",
+        "--logLevel=4"
+      ],
+      "env": {}
     }
   ]
 }
