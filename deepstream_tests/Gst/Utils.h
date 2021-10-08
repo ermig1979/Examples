@@ -10,7 +10,9 @@ namespace Gst
 
     bool StaticLink(Element& a, Element& b, Element& c);
 
-    bool DynamicLink(Element & a, Element & b, const String & desc);
+    bool StaticLink(Element& a, Element& b, Element& c, Element& d);
+
+    bool DynamicLink(Element & a, Element & b);
 
     String StateToString(GstState state);
 }

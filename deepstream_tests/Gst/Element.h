@@ -73,7 +73,7 @@ namespace Gst
                     if (Gst::logLevel >= Gst::LogDebug)
                         std::cout << "Delete element '" << Name() << "':" << std::endl;
                     GstState state;
-                    gst_element_get_state(_element, &state, NULL, GST_CLOCK_TIME_NONE);
+                    gst_element_get_state(_element, &state, NULL, GST_MSECOND*1000);
                     if (state != GST_STATE_NULL)
                         SetState(GST_STATE_NULL);
                     gst_object_unref(_element);

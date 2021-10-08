@@ -23,7 +23,7 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--decoderType=soft",
+        "--decoderType=hard",
         "--logLevel=4"
       ],
       "env": {}
@@ -37,9 +37,10 @@
       "debuggerConfiguration": "gdb",
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
       "args": [
-        "-s=https://www.freedesktop.org/software/gstreamer-sdk/data/media/sintel_trailer-480p.webm",
-        "-ll=4",
-        "--gst-debug-level=3"
+        "--source=rtsp://172.23.3.10:554/audio_alarm_fhd",
+        "--decoderType=hard",
+        "--logLevel=4",
+        "--gst-debug-level=0"
       ],
       "env": {}
     }

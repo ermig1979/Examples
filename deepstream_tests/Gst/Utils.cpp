@@ -25,6 +25,11 @@ namespace Gst
         return StaticLink(a, b) && StaticLink(b, c);
     }
 
+    bool StaticLink(Element& a, Element& b, Element& c, Element& d)
+    {
+        return StaticLink(a, b) && StaticLink(b, c) && StaticLink(c, d);
+    }
+
     static void DynamicLinkCallback(GstElement* element, GstPad* sourcePad, gpointer data)
     {
         GstElement* sinkElement = (GstElement*)data;
@@ -57,9 +62,9 @@ namespace Gst
             g_print("OK. \n");
     }
 
-    bool DynamicLink(Element & a, Element & b, const String& desc)
+    bool DynamicLink(Element & a, Element & b)
     {
-        gulong id = g_signal_connect_data(a.Handle(), desc.c_str(), G_CALLBACK(DynamicLinkCallback), b.Handle(), NULL, GConnectFlags(0));
+        gulong id = g_signal_connect_data(a.Handle(), "pad-added", G_CALLBACK(DynamicLinkCallback), b.Handle(), NULL, GConnectFlags(0));
         if (id == 0 && Gst::logLevel >= Gst::LogError)
             std::cout << "Can't set dynamic link between '" << a.Name() << "' and '" << b.Name() << "'!" << std::endl;
         else

@@ -27,16 +27,22 @@ namespace Gst
             {
                 g_source_remove(_busWatchId);
                 _busWatchId = 0;
+                if (Gst::logLevel >= Gst::LogDebug)
+                    std::cout << "MainLoop : remove Bus watch." << std::endl;
             }
             if (_ioStdIn)
             {
                 g_io_channel_unref(_ioStdIn);
                 _ioStdIn = NULL;
-            }            
+                if (Gst::logLevel >= Gst::LogDebug)
+                    std::cout << "MainLoop : remove IO watch." << std::endl;
+            }
             if (_loop)
             {
                 g_main_loop_unref(_loop);
                 _loop = NULL;
+                if (Gst::logLevel >= Gst::LogDebug)
+                    std::cout << "MainLoop : deleted." << std::endl;
             }
         }
 
@@ -50,13 +56,13 @@ namespace Gst
                 if (_busWatchId)
                 {
                     if (Gst::logLevel >= Gst::LogDebug)
-                        std::cout << "MainLoop : add bus watch." << std::endl;
+                        std::cout << "MainLoop : add Bus watch." << std::endl;
                     return true;
                 }
                 else
                 {
                     if (Gst::logLevel >= Gst::LogError)
-                        std::cout << "MainLoop : Can't add bus watch!" << std::endl;
+                        std::cout << "MainLoop : Can't add Bus watch!" << std::endl;
                     return false;
                 }
             }
