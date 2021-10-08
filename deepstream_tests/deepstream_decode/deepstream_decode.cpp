@@ -10,9 +10,22 @@
 #include "Gst/Utils.h"
 #include "Gst/MainLoop.h"
 
+struct Options : Gst::Options
+{
+    Gst::String source;
+    Gst::String decoderType;
+
+    Options(int argc, char* argv[])
+        : Gst::Options(argc, argv)
+    {
+        source = GetArg2("-s", "--source");
+        decoderType = GetArg2("-dt", "--decoderType", "hard", false, {"hard", "soft"});
+    }
+};
+
 int main(int argc, char* argv[])
 {
-    Gst::Options options(argc, argv);
+    Options options(argc, argv);
 
     std::cout << "Deepstream try to play file '" << options.source << "' :" << std::endl;
 
@@ -31,8 +44,16 @@ int main(int argc, char* argv[])
             return 1;
         if (!parser.FactoryMake("h264parse", "h264parse-decoder"))
             return 1;
-        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))//("avdec_h264", "avdec_h264-decoder")
-            return 1;
+        if (options.decoderType == "hard")
+        {
+            if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+                return 1;
+        }
+        else if (options.decoderType == "soft")
+        {
+            if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
+                return 1;
+        }
         if (!sink.FactoryMake("fakesink", "video-output"))
             return 1;
 
@@ -41,12 +62,12 @@ int main(int argc, char* argv[])
         if (!(loop.BusAddWatch(pipeline) && loop.IoAddWatch()))
             return 1;
 
-        if(!(pipeline.Add(source) && pipeline.Add(demuxer) && pipeline.Add(parser) && pipeline.Add(decoder) && pipeline.Add(sink)))
+        if(!(pipeline.Add(source, demuxer, parser, decoder, sink)))
             return 1;
 
         if (!Gst::StaticLink(source, demuxer))
             return 1;
-        if (!(Gst::StaticLink(parser, decoder) && Gst::StaticLink(decoder, sink)))
+        if (!(Gst::StaticLink(parser, decoder, sink)))
             return 1;
         if (!Gst::DynamicLink(demuxer, parser, "pad-added"))
             return 1;

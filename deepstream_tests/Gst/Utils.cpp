@@ -20,6 +20,11 @@ namespace Gst
         }
     }
 
+    bool StaticLink(Element& a, Element& b, Element& c)
+    {
+        return StaticLink(a, b) && StaticLink(b, c);
+    }
+
     static void DynamicLinkCallback(GstElement* element, GstPad* sourcePad, gpointer data)
     {
         GstElement* sinkElement = (GstElement*)data;
@@ -49,7 +54,7 @@ namespace Gst
         }
         gst_object_unref(sinkPad);
         if (Gst::logLevel >= Gst::LogDebug)
-            g_print("OK. \n", element->object.name);
+            g_print("OK. \n");
     }
 
     bool DynamicLink(Element & a, Element & b, const String& desc)

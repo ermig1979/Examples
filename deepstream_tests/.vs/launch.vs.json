@@ -15,15 +15,31 @@
     },
     {
       "type": "cppgdb",
-      "name": "deepstream_decode",
+      "name": "deepstream_decode_file",
       "project": "deepstream_decode\\CMakeLists.txt",
       "projectTarget": "deepstream_decode",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
-      "args": [ 
-        "-s=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4", 
-        "-l=3" 
+      "args": [
+        "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--decoderType=soft",
+        "--logLevel=4"
+      ],
+      "env": {}
+    },
+    {
+      "type": "cppgdb",
+      "name": "deepstream_decode_rtsp",
+      "project": "deepstream_decode\\CMakeLists.txt",
+      "projectTarget": "deepstream_decode",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
+      "args": [
+        "-s=https://www.freedesktop.org/software/gstreamer-sdk/data/media/sintel_trailer-480p.webm",
+        "-ll=4",
+        "--gst-debug-level=3"
       ],
       "env": {}
     }

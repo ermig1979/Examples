@@ -129,6 +129,26 @@ namespace Gst
             }
         }
 
+        bool Add(Element& elem0, Element& elem1)
+        {
+            return Add(elem0) && Add(elem1);
+        }
+
+        bool Add(Element& elem0, Element& elem1, Element& elem2)
+        {
+            return Add(elem0) && Add(elem1) && Add(elem2);
+        }
+
+        bool Add(Element& elem0, Element& elem1, Element& elem2, Element& elem3)
+        {
+            return Add(elem0) && Add(elem1) && Add(elem2) && Add(elem3);
+        }
+
+        bool Add(Element& elem0, Element& elem1, Element& elem2, Element& elem3, Element& elem4)
+        {
+            return Add(elem0) && Add(elem1) && Add(elem2) && Add(elem3) && Add(elem4);
+        }
+
         GstElement* Handle()
         {
             return _element;
