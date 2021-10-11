@@ -55,9 +55,10 @@
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=soft",
-        "--output=~/output.mp4",
+        "--output=output.mp4",
         "--encoderType=soft",
-        "--logLevel=4"
+        "--logLevel=4",
+        "--gst-debug-level=3"
       ],
       "env": {}
     }

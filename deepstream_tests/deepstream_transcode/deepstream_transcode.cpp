@@ -9,6 +9,7 @@
 #include "Gst/Options.h"
 #include "Gst/Utils.h"
 #include "Gst/MainLoop.h"
+#include "Gst/Caps.h"
 
 struct Options : Gst::Options
 {
@@ -38,7 +39,7 @@ struct Options : Gst::Options
 
 bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, parser, decoder, sink;
+    Gst::Element source, demuxer, parser, decoder, filter, converter, encoder, muxer, sink;
 
     if (!source.FactoryMake("filesrc", "file-source"))
         return false;
@@ -63,10 +64,42 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
     else
         return false;
 
-    if (!sink.FactoryMake("fakesink", "video-output"))
+    if (!filter.FactoryMake("capsfilter", "caps-filter"))
+        return false;
+    if (options.encoderType == "soft")
+    {
+        Gst::Caps caps("video/x-raw");
+        caps.SetString("format", "NV12");
+        filter.Set("caps", caps);
+    }
+
+    if (options.decoderType == "soft" && options.encoderType == "soft")
+    {
+        if (!converter.FactoryMake("videoconvert", "video-converter"))
+            return false;
+    }
+    else
+    {
+        if (!converter.FactoryMake("nvvideoconvert", "nv-video-converter"))
+            return false;
+    }
+
+    if (options.encoderType == "soft")
+    {
+        if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
+            return false;
+    }
+
+    if (!muxer.FactoryMake("qtmux", "qt-muxer"))
         return false;
 
-    if (!pipeline.Add(source, demuxer, parser, decoder, sink))
+    if (!sink.FactoryMake("filesink", "video-output"))
+        return false;
+    sink.Set("location", options.output);
+
+    if (!pipeline.Add(source, demuxer, parser, decoder))
+        return false;
+    if (!pipeline.Add(filter, converter, encoder, muxer, sink))
         return false;
 
     if (!Gst::StaticLink(source, demuxer))
@@ -75,8 +108,15 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
     if (!Gst::DynamicLink(demuxer, parser))
         return false;
 
-    if (!(Gst::StaticLink(parser, decoder, sink)))
+    if (!Gst::StaticLink(parser, decoder, filter))
         return false;
+
+    if (!Gst::StaticLink(filter, converter, encoder))
+        return false;
+
+    if (!Gst::StaticLink(encoder, muxer, sink))
+        return false;
+
 
     return true;
 }
