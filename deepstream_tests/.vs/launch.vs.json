@@ -54,11 +54,11 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--decoderType=soft",
+        "--decoderType=hard",
         "--output=output.mp4",
-        "--encoderType=soft",
+        "--encoderType=hard",
         "--logLevel=4",
-        "--gst-debug-level=3"
+        "--gst-debug-level=1"
       ],
       "env": {}
     }
