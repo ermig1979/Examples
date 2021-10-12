@@ -62,7 +62,7 @@ bool InitFileDecoder(const Options& options, Gst::Element & pipeline)
     if (!sink.FactoryMake("fakesink", "video-output"))
         return false;
 
-    if (!pipeline.Add(source, demuxer, parser, decoder, sink))
+    if (!pipeline.BinAdd(source, demuxer, parser, decoder, sink))
         return false;
 
     if (!Gst::StaticLink(source, demuxer))
@@ -108,7 +108,7 @@ bool InitRtspDecoder(const Options& options, Gst::Element& pipeline)
     if (!sink.FactoryMake("fakesink", "video-output"))
         return false;
 
-    if (!pipeline.Add(source, depay, parser, decoder, sink))
+    if (!pipeline.BinAdd(source, depay, parser, decoder, sink))
         return false;
 
     if (!Gst::DynamicLink(source, depay))

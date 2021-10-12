@@ -113,6 +113,22 @@ namespace Gst
             return true;
         }
 
+        bool SetCapsFromString(const String& string)
+        {
+            GstCaps * caps = gst_caps_from_string(string.c_str());
+            if (caps == NULL)
+            {
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << "Element '" << Name() << "' : Can't create caps from string: '" << string << "' !" << std::endl;
+                return false;
+            }
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Element '" << Name() << "' : set caps from string '" << string << "." << std::endl;
+            g_object_set(G_OBJECT(_element), "caps", caps, NULL);
+            gst_caps_unref(caps);
+            return true;
+        }
+
         bool Set(const String& name, Caps & caps)
         {
             if (Gst::logLevel >= Gst::LogDebug)
@@ -121,7 +137,7 @@ namespace Gst
             return true;
         }
 
-        bool Add(Element & element)
+        bool BinAdd(Element & element)
         {
             if (gst_bin_add(GST_BIN(_element), element._element) == FALSE)
             {
@@ -138,24 +154,29 @@ namespace Gst
             }
         }
 
-        bool Add(Element& elem0, Element& elem1)
+        bool BinAdd(Element& elem0, Element& elem1)
         {
-            return Add(elem0) && Add(elem1);
+            return BinAdd(elem0) && BinAdd(elem1);
         }
 
-        bool Add(Element& elem0, Element& elem1, Element& elem2)
+        bool BinAdd(Element& elem0, Element& elem1, Element& elem2)
         {
-            return Add(elem0) && Add(elem1) && Add(elem2);
+            return BinAdd(elem0, elem1) && BinAdd(elem2);
         }
 
-        bool Add(Element& elem0, Element& elem1, Element& elem2, Element& elem3)
+        bool BinAdd(Element& elem0, Element& elem1, Element& elem2, Element& elem3)
         {
-            return Add(elem0) && Add(elem1) && Add(elem2) && Add(elem3);
+            return BinAdd(elem0, elem1) && BinAdd(elem2, elem3);
         }
 
-        bool Add(Element& elem0, Element& elem1, Element& elem2, Element& elem3, Element& elem4)
+        bool BinAdd(Element& elem0, Element& elem1, Element& elem2, Element& elem3, Element& elem4)
         {
-            return Add(elem0) && Add(elem1) && Add(elem2) && Add(elem3) && Add(elem4);
+            return BinAdd(elem0, elem1, elem2, elem3) && BinAdd(elem4);
+        }
+
+        bool BinAdd(Element& elem0, Element& elem1, Element& elem2, Element& elem3, Element& elem4, Element& elem5)
+        {
+            return BinAdd(elem0, elem1, elem2, elem3) && BinAdd(elem4, elem5);
         }
 
         GstElement* Handle()

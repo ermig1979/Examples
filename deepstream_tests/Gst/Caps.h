@@ -10,6 +10,11 @@ namespace Gst
 {
     struct Caps
     {
+        Caps()
+            : _caps(NULL)
+        {
+        }
+
         Caps(const String & type)
             : _type(type)
             , _caps(gst_caps_new_empty_simple(type.c_str()))

@@ -22,7 +22,7 @@ struct Options : Gst::Options
         : Gst::Options(argc, argv)
     {
         source = GetArg2("-s", "--source");
-        decoderType = GetArg2("-dt", "--decoderType", "hard", false, {"hard", "soft"});
+        decoderType = GetArg2("-dt", "--decoderType", "hard", false, { "hard", "soft" });
         output = GetArg2("-o", "--output");
         encoderType = GetArg2("-et", "--encoderType", "hard", false, { "hard", "soft" });
     }
@@ -39,7 +39,7 @@ struct Options : Gst::Options
 
 bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, parser, decoder, filter, converter, encoder, muxer, sink;
+    Gst::Element source, demuxer, decParser, decoder, filter, converter, encoder, encParser, muxer, sink;
 
     if (!source.FactoryMake("filesrc", "file-source"))
         return false;
@@ -48,7 +48,7 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
     if (!demuxer.FactoryMake("qtdemux", "qt-demuxer"))
         return false;
 
-    if (!parser.FactoryMake("h264parse", "h264parse-decoder"))
+    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
         return false;
 
     if (options.decoderType == "hard")
@@ -79,28 +79,21 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
         return false;
     if (options.encoderType == "soft")
     {
-        Gst::Caps caps("video/x-raw");
-        caps.SetString("format", "NV12");
-        filter.Set("caps", caps);
-    }
-    else
-    {
-        Gst::Caps caps("video/x-raw");
-        caps.SetString("format", "I420");
-        caps.SetString("memory", "NVMM");
-        filter.Set("caps", caps);
-    }
-    
-    if (options.encoderType == "soft")
-    {
+        if (!filter.SetCapsFromString("video/x-raw, format=I420"))
+            return false;
         if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
             return false;
     }
     else
     {
+        if (!filter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
+            return false;
         if (!encoder.FactoryMake("nvv4l2h264enc", "nvv4l2h264enc-encoder"))
             return false;
     }
+
+    if (!encParser.FactoryMake("h264parse", "h264parse-encoder"))
+        return false;
 
     if (!muxer.FactoryMake("qtmux", "qt-muxer"))
         return false;
@@ -109,24 +102,24 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
         return false;
     sink.Set("location", options.output);
 
-    if (!pipeline.Add(source, demuxer, parser, decoder))
+    if (!pipeline.BinAdd(source, demuxer, decParser, decoder))
         return false;
-    if (!pipeline.Add(filter, converter, encoder, muxer, sink))
+    if (!pipeline.BinAdd(filter, converter, encoder, encParser, muxer, sink))
         return false;
 
     if (!Gst::StaticLink(source, demuxer))
         return false;
 
-    if (!Gst::DynamicLink(demuxer, parser))
+    if (!Gst::DynamicLink(demuxer, decParser))
         return false;
 
-    if (!Gst::StaticLink(parser, decoder, converter))
+    if (!Gst::StaticLink(decParser, decoder, converter))
         return false;
 
-    if (!Gst::StaticLink(converter, filter, encoder))
+    if (!Gst::StaticLink(converter, filter, encoder, encParser))
         return false;
 
-    if (!Gst::StaticLink(encoder, muxer, sink))
+    if (!Gst::StaticLink(encParser, muxer, sink))
         return false;
 
 
@@ -164,7 +157,7 @@ bool InitRtspTranscoder(const Options& options, Gst::Element& pipeline)
     if (!sink.FactoryMake("fakesink", "video-output"))
         return false;
 
-    if (!pipeline.Add(source, depay, parser, decoder, sink))
+    if (!pipeline.BinAdd(source, depay, parser, decoder, sink))
         return false;
 
     if (!Gst::DynamicLink(source, depay))
