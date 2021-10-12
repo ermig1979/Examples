@@ -12,6 +12,7 @@ namespace Gst
             : _loop(NULL)
             , _busWatchId(0)
             , _ioStdIn(NULL)
+            , _pipeline(NULL)
         {
             _loop = g_main_loop_new(NULL, FALSE);
             if (_loop == NULL)
@@ -48,7 +49,8 @@ namespace Gst
 
         bool BusAddWatch(Element & pipeline)
         {
-            GstBus * bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline.Handle()));
+            _pipeline = pipeline.Handle();
+            GstBus * bus = gst_pipeline_get_bus(GST_PIPELINE(_pipeline));
             if (bus)
             {
                 _busWatchId = gst_bus_add_watch(bus, BusCallback, _loop);
@@ -83,7 +85,7 @@ namespace Gst
                     std::cout << "MainLoop: g_io_channel_unix_new() return null!" << std::endl;
                 return false;
             }
-            if (g_io_add_watch(_ioStdIn, G_IO_IN, (GIOFunc)IoCallback, _loop) == 0)
+            if (g_io_add_watch(_ioStdIn, G_IO_IN, (GIOFunc)IoCallback, this) == 0)
             {
                 if (Gst::logLevel >= Gst::LogError)
                     std::cout << "MainLoop : Can't add IO watch!" << std::endl;
@@ -111,6 +113,7 @@ namespace Gst
         GMainLoop* _loop;
         guint _busWatchId;
         GIOChannel* _ioStdIn;
+        GstElement * _pipeline;
 
         static gboolean BusCallback(GstBus* bus, GstMessage* msg, gpointer data)
         {
@@ -164,7 +167,7 @@ namespace Gst
 
         static gboolean IoCallback(GIOChannel* source, GIOCondition cond, gpointer* data)
         {
-            GMainLoop* loop = (GMainLoop*)data;
+            MainLoop * loop = (MainLoop*)data;
 
             gchar* str = NULL;
 
@@ -175,8 +178,15 @@ namespace Gst
             {
             case 'q':
                 if (Gst::logLevel >= Gst::LogInfo)
-                    std::cout << "Key 'q' is pressed. Try to stop pipeline." << std::endl;
-                g_main_loop_quit(loop);
+                {
+                    std::cout << "Key 'q' is pressed." << std::endl;
+                    std::cout << "Try to stop pipeline." << std::endl;
+                }
+                gst_element_send_event(loop->_pipeline, gst_event_new_eos());
+                sleep(1);
+                if (Gst::logLevel >= Gst::LogInfo)
+                    std::cout << "Quit from main loop." << std::endl;
+                g_main_loop_quit(loop->_loop);
                 break;
             default:
                 break;

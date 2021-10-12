@@ -61,6 +61,24 @@
         "--gst-debug-level=1"
       ],
       "env": {}
+    },
+    {
+      "type": "cppgdb",
+      "name": "deepstream_transcode_rtsp",
+      "project": "deepstream_transcode\\CMakeLists.txt",
+      "projectTarget": "deepstream_transcode",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
+      "args": [
+        "--source=rtsp://172.23.3.10:554/audio_alarm_fhd",
+        "--decoderType=hard",
+        "--output=/home/igor.ermolaev/docker_deepstream/output.mp4",
+        "--encoderType=hard",
+        "--logLevel=4",
+        "--gst-debug-level=1"
+      ],
+      "env": {}
     }
   ]
 }

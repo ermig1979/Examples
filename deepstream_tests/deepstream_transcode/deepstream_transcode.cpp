@@ -39,7 +39,7 @@ struct Options : Gst::Options
 
 bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, decParser, decoder, filter, converter, encoder, encParser, muxer, sink;
+    Gst::Element source, demuxer, decParser, decoder, converter, filter, encoder, encParser, muxer, sink;
 
     if (!source.FactoryMake("filesrc", "file-source"))
         return false;
@@ -51,18 +51,16 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
     if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
         return false;
 
-    if (options.decoderType == "hard")
-    {
-        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
-            return false;
-    }
-    else if (options.decoderType == "soft")
+    if (options.decoderType == "soft")
     {
         if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
             return false;
     }
     else
-        return false;
+    {
+        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+            return false;
+    }
 
     if (options.decoderType == "soft" && options.encoderType == "soft")
     {
@@ -122,13 +120,12 @@ bool InitFileTranscoder(const Options& options, Gst::Element & pipeline)
     if (!Gst::StaticLink(encParser, muxer, sink))
         return false;
 
-
     return true;
 }
 
 bool InitRtspTranscoder(const Options& options, Gst::Element& pipeline)
 {
-    Gst::Element source, depay, parser, decoder, sink;
+    Gst::Element source, depay, decParser, decoder, converter, filter, encoder, encParser, muxer, sink;
 
     if (!source.FactoryMake("rtspsrc", "rtsp-source"))
         return false;
@@ -138,32 +135,74 @@ bool InitRtspTranscoder(const Options& options, Gst::Element& pipeline)
     if (!depay.FactoryMake("rtph264depay", "h264depay-loader"))
         return false;
 
-    if (!parser.FactoryMake("h264parse", "h264parse-decoder"))
+    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
         return false;
 
-    if (options.decoderType == "hard")
-    {
-        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
-            return false;
-    }
-    else if (options.decoderType == "soft")
+    if (options.decoderType == "soft")
     {
         if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
             return false;
     }
     else
+    {
+        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+            return false;
+    }
+
+    if (options.decoderType == "soft" && options.encoderType == "soft")
+    {
+        if (!converter.FactoryMake("videoconvert", "video-converter"))
+            return false;
+    }
+    else
+    {
+        if (!converter.FactoryMake("nvvideoconvert", "nv-video-converter"))
+            return false;
+    }
+
+    if (!filter.FactoryMake("capsfilter", "caps-filter"))
+        return false;
+    if (options.encoderType == "soft")
+    {
+        if (!filter.SetCapsFromString("video/x-raw, format=I420"))
+            return false;
+        if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
+            return false;
+    }
+    else
+    {
+        if (!filter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
+            return false;
+        if (!encoder.FactoryMake("nvv4l2h264enc", "nvv4l2h264enc-encoder"))
+            return false;
+    }
+
+    if (!encParser.FactoryMake("h264parse", "h264parse-encoder"))
         return false;
 
-    if (!sink.FactoryMake("fakesink", "video-output"))
+    if (!muxer.FactoryMake("qtmux", "qt-muxer"))
         return false;
 
-    if (!pipeline.BinAdd(source, depay, parser, decoder, sink))
+    if (!sink.FactoryMake("filesink", "video-output"))
+        return false;
+    sink.Set("location", options.output);
+    sink.Set("async", FALSE);
+
+    if (!pipeline.BinAdd(source, depay, decParser, decoder, filter))
+        return false;
+    if (!pipeline.BinAdd(converter, encoder, encParser, muxer, sink))
         return false;
 
     if (!Gst::DynamicLink(source, depay))
         return false;
 
-    if (!(Gst::StaticLink(depay, parser, decoder, sink)))
+    if (!Gst::StaticLink(depay, decParser, decoder, converter))
+        return false;
+
+    if (!Gst::StaticLink(converter, filter, encoder, encParser))
+        return false;
+
+    if (!Gst::StaticLink(encParser, muxer, sink))
         return false;
 
     return true;
