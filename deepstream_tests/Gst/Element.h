@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Utils.h"
-#include "Caps.h"
 
 namespace Gst
 {
@@ -126,14 +125,6 @@ namespace Gst
                 std::cout << "Element '" << Name() << "' : set caps from string '" << string << "." << std::endl;
             g_object_set(G_OBJECT(_element), "caps", caps, NULL);
             gst_caps_unref(caps);
-            return true;
-        }
-
-        bool Set(const String& name, Caps & caps)
-        {
-            if (Gst::logLevel >= Gst::LogDebug)
-                std::cout << "Element '" << Name() << "' set '" << name << "' of '" << caps.Type() << "' type." << std::endl;
-            g_object_set(G_OBJECT(_element), name.c_str(), caps.Handle(), NULL);
             return true;
         }
 

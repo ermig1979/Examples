@@ -9,7 +9,6 @@
 #include "Gst/Options.h"
 #include "Gst/Utils.h"
 #include "Gst/MainLoop.h"
-#include "Gst/Caps.h"
 
 struct Options : Gst::Options
 {

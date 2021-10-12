@@ -4,17 +4,6 @@
   "configurations": [
     {
       "type": "cppgdb",
-      "name": "deepstream-test1-app",
-      "project": "deepstream-test1\\CMakeLists.txt",
-      "projectTarget": "deepstream-test1-app",
-      "comment": "See http://aka.ms/vslinuxdebug.",
-      "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream-test1",
-      "args": [ "/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4" ],
-      "env": {}
-    },
-    {
-      "type": "cppgdb",
       "name": "deepstream_decode_file",
       "project": "deepstream_decode\\CMakeLists.txt",
       "projectTarget": "deepstream_decode",
@@ -71,7 +60,7 @@
       "debuggerConfiguration": "gdb",
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
       "args": [
-        "--source=rtsp://172.23.3.10:554/audio_alarm_fhd",
+        "--source=rtsp://172.23.3.10:554/pdd_track_high_fhd",
         "--decoderType=hard",
         "--output=/home/igor.ermolaev/docker_deepstream/output.mp4",
         "--encoderType=hard",
