@@ -14,6 +14,7 @@ struct Options : Gst::Options
 {
     Gst::String source;
     Gst::String decoderType;
+    Gst::String detectorConfig;
     Gst::String output;
     Gst::String encoderType;
     int bitrate;
@@ -23,6 +24,7 @@ struct Options : Gst::Options
     {
         source = GetArg2("-s", "--source");
         decoderType = GetArg2("-dt", "--decoderType", "hard", false, { "hard", "soft" });
+        detectorConfig = GetArg2("-dc", "--detectorConfig", "./data/detect_0/config.txt", false);
         output = GetArg2("-o", "--output");
         encoderType = GetArg2("-et", "--encoderType", "hard", false, { "hard", "soft" });
         bitrate = Gst::FromString<int>(GetArg2("-b", "--bitrate", "5000", false))*1000;
@@ -40,7 +42,7 @@ struct Options : Gst::Options
 
 bool InitFileDetector(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, decParser, decoder, streamMuxer, converter, filter, encoder, encParser, muxer, sink;
+    Gst::Element source, demuxer, decParser, decoder, streamMuxer, detector, converter, filter, encoder, encParser, muxer, sink;
 
     if (!source.FactoryMake("filesrc", "file-source"))
         return false;
@@ -68,6 +70,20 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
     streamMuxer.Set("batch-size", 1);
     streamMuxer.Set("height", 1080);
     streamMuxer.Set("width", 1920);
+
+    if (!detector.FactoryMake("nvinfer", "nvinference-engine"))
+        return false;
+    if (access(options.detectorConfig.c_str(), F_OK) == -1)
+    {
+        if (Gst::logLevel >= Gst::LogError)
+        {
+            std::cout << "File '" << options.detectorConfig << "' is not exist!" << std::endl;
+            system("pwd");
+            system("ls");
+        }
+        return false;
+    }    
+    detector.Set("config-file-path", options.detectorConfig);
 
     if (options.decoderType == "soft" && options.encoderType == "soft")
     {
@@ -108,7 +124,9 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
         return false;
     sink.Set("location", options.output);
 
-    if (!pipeline.BinAdd(source, demuxer, decParser, decoder, streamMuxer))
+    if (!pipeline.BinAdd(source, demuxer, decParser, decoder))
+        return false;
+    if (!pipeline.BinAdd(streamMuxer, detector))
         return false;
     if (!pipeline.BinAdd(filter, converter, encoder, encParser, muxer, sink))
         return false;
@@ -125,7 +143,10 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
     if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
         return false;
 
-    if (!Gst::StaticLink(streamMuxer, converter, filter, encoder))
+    if (!Gst::StaticLink(streamMuxer, detector))
+        return false;
+
+    if (!Gst::StaticLink(detector, converter, filter, encoder))
         return false;
 
     if (!Gst::StaticLink(encoder, encParser, muxer, sink))

@@ -40,7 +40,7 @@
       "projectTarget": "deepstream_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_detect",
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=hard",
