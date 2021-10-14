@@ -47,7 +47,7 @@
         "--output=/home/igor.ermolaev/docker_deepstream/detect_out.mp4",
         "--encoderType=hard",
         "--logLevel=4",
-        "--gst-debug-level=1"
+        "--gst-debug-level=2"
       ],
       "env": {}
     },

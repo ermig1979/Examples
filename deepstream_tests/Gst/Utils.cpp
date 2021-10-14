@@ -75,6 +75,43 @@ namespace Gst
         return id != 0;
     }
 
+    bool PadLink(Element& a, const String& aSrcName, Element& b, const String& bSinkName)
+    {
+        bool result = false;
+        GstPad* srcPad = gst_element_get_static_pad(a.Handle(), aSrcName.c_str());
+        if (srcPad == NULL) 
+        {
+            if (Gst::logLevel >= Gst::LogError)
+                std::cout << "Can't get static pad '" << aSrcName << "' from element '" << a.Name() << "'!" << std::endl;
+        }
+        else
+        {
+            GstPad * sinkPad = gst_element_get_request_pad(b.Handle(), bSinkName.c_str());
+            if (sinkPad == NULL) 
+            {
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << "Can't get request pad '" << bSinkName << "' from element '" << b.Name() << "'!" << std::endl;
+            }
+            else
+            {
+                if (gst_pad_link(srcPad, sinkPad) != GST_PAD_LINK_OK)
+                {
+                    if (Gst::logLevel >= Gst::LogError)
+                        std::cout << "Can't make pad link between '" << a.Name() << "'->" << aSrcName << " and '" << b.Name() << "'->" << bSinkName << " !" << std::endl;
+                }
+                else
+                {
+                    if (Gst::logLevel >= Gst::LogDebug)
+                        std::cout << "Make pad link between '" << a.Name() << "'->" << aSrcName << " and '" << b.Name() << "'->" << bSinkName << " ." << std::endl;
+                    result = true;
+                }
+                gst_object_unref(sinkPad);
+            }
+            gst_object_unref(srcPad);
+        }
+        return result;
+    }
+
     String StateToString(GstState state)
     {
         String names[6] = { "Undefined", "Null", "Ready", "Paused", "Playing", "Unknown"};

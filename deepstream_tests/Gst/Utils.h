@@ -14,5 +14,7 @@ namespace Gst
 
     bool DynamicLink(Element & a, Element & b);
 
+    bool PadLink(Element& a, const String & aSrcName, Element& b, const String & bSinkName);
+
     String StateToString(GstState state);
 }

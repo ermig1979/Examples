@@ -40,7 +40,7 @@ struct Options : Gst::Options
 
 bool InitFileDetector(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, decParser, decoder, converter, filter, encoder, encParser, muxer, sink;
+    Gst::Element source, demuxer, decParser, decoder, streamMuxer, converter, filter, encoder, encParser, muxer, sink;
 
     if (!source.FactoryMake("filesrc", "file-source"))
         return false;
@@ -62,6 +62,12 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
         if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
             return false;
     }
+
+    if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
+        return false;
+    streamMuxer.Set("batch-size", 1);
+    streamMuxer.Set("height", 1080);
+    streamMuxer.Set("width", 1920);
 
     if (options.decoderType == "soft" && options.encoderType == "soft")
     {
@@ -102,7 +108,7 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
         return false;
     sink.Set("location", options.output);
 
-    if (!pipeline.BinAdd(source, demuxer, decParser, decoder))
+    if (!pipeline.BinAdd(source, demuxer, decParser, decoder, streamMuxer))
         return false;
     if (!pipeline.BinAdd(filter, converter, encoder, encParser, muxer, sink))
         return false;
@@ -113,13 +119,16 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
     if (!Gst::DynamicLink(demuxer, decParser))
         return false;
 
-    if (!Gst::StaticLink(decParser, decoder, converter))
+    if (!Gst::StaticLink(decParser, decoder))
         return false;
 
-    if (!Gst::StaticLink(converter, filter, encoder, encParser))
+    if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
         return false;
 
-    if (!Gst::StaticLink(encParser, muxer, sink))
+    if (!Gst::StaticLink(streamMuxer, converter, filter, encoder))
+        return false;
+
+    if (!Gst::StaticLink(encoder, encParser, muxer, sink))
         return false;
 
     return true;
