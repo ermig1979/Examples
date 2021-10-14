@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <unistd.h>
+
 #include "Utils.h"
 #include "Options.h"
 #include "Element.h"
@@ -116,5 +119,20 @@ namespace Gst
     {
         String names[6] = { "Undefined", "Null", "Ready", "Paused", "Playing", "Unknown"};
         return state >= GST_STATE_VOID_PENDING && state <= GST_STATE_PLAYING ? names[(int)state] : names[5];
+    }
+
+    bool IsFileExist(const String& name)
+    {
+        if (access(name.c_str(), F_OK) == -1)
+        {
+            if (Gst::logLevel >= Gst::LogError)
+            {
+                std::cout << "File '" << name << "' is not exist!" << std::endl;
+                std::cout << "Current directory: " << std::flush;
+                system("pwd");
+            }
+            return false;
+        }
+        return true;
     }
 }

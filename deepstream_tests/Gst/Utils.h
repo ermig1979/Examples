@@ -17,4 +17,6 @@ namespace Gst
     bool PadLink(Element& a, const String & aSrcName, Element& b, const String & bSinkName);
 
     String StateToString(GstState state);
+
+    bool IsFileExist(const String& name);
 }

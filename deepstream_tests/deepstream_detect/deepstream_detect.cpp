@@ -73,17 +73,8 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
 
     if (!detector.FactoryMake("nvinfer", "nvinference-engine"))
         return false;
-    if (access(options.detectorConfig.c_str(), F_OK) == -1)
-    {
-        if (Gst::logLevel >= Gst::LogError)
-        {
-            std::cout << "File '" << options.detectorConfig << "' is not exist!" << std::endl;
-            system("pwd");
-            system("ls");
-        }
+    if (!(Gst::IsFileExist(options.detectorConfig) && detector.Set("config-file-path", options.detectorConfig)))
         return false;
-    }    
-    detector.Set("config-file-path", options.detectorConfig);
 
     if (options.decoderType == "soft" && options.encoderType == "soft")
     {

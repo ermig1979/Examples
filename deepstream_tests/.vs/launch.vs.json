@@ -45,6 +45,7 @@
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=hard",
         "--output=/home/igor.ermolaev/docker_deepstream/detect_out.mp4",
+        "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=2"
