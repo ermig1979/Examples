@@ -23,7 +23,6 @@ struct Options : Gst::Options
         : Gst::Options(argc, argv)
     {
         source = GetArg2("-s", "--source");
-        decoderType = GetArg2("-dt", "--decoderType", "hard", false, { "hard", "soft" });
         detectorConfig = GetArg2("-dc", "--detectorConfig", "./data/detect_0/config.txt", false);
         output = GetArg2("-o", "--output");
         encoderType = GetArg2("-et", "--encoderType", "hard", false, { "hard", "soft" });
@@ -40,30 +39,35 @@ struct Options : Gst::Options
     }
 };
 
-bool InitFileDetector(const Options& options, Gst::Element & pipeline)
+bool InitPipeline(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxer, decParser, decoder, streamMuxer, detector, converter, filter, encoder, encParser, muxer, sink;
+    Gst::Element source, demuxOrDepay, decParser, decoder, streamMuxer, detector, annConverter, encConverter, encFilter, encoder, encParser, muxer, sink;
 
-    if (!source.FactoryMake("filesrc", "file-source"))
-        return false;
-    source.Set("location", options.source);
-
-    if (!demuxer.FactoryMake("qtdemux", "qt-demuxer"))
-        return false;
-
-    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
-        return false;
-
-    if (options.decoderType == "soft")
+    if (options.Rtsp())
     {
-        if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
+        if (!source.FactoryMake("rtspsrc", "rtsp-source"))
+            return false;
+        source.Set("latency", 100);
+        source.Set("location", options.source);
+
+        if (!demuxOrDepay.FactoryMake("rtph264depay", "h264depay-loader"))
             return false;
     }
     else
     {
-        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+        if (!source.FactoryMake("filesrc", "file-source"))
+            return false;
+        source.Set("location", options.source);
+
+        if (!demuxOrDepay.FactoryMake("qtdemux", "qt-demuxer"))
             return false;
     }
+
+    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
+        return false;
+
+    if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
+        return false;
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
         return false;
@@ -76,29 +80,25 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
     if (!(Gst::IsFileExist(options.detectorConfig) && detector.Set("config-file-path", options.detectorConfig)))
         return false;
 
-    if (options.decoderType == "soft" && options.encoderType == "soft")
-    {
-        if (!converter.FactoryMake("videoconvert", "video-converter"))
-            return false;
-    }
-    else
-    {
-        if (!converter.FactoryMake("nvvideoconvert", "nv-video-converter"))
-            return false;
-    }
+    if (!annConverter.FactoryMake("nvvideoconvert", "annotator-nv-video-converter"))
+        return false;
 
-    if (!filter.FactoryMake("capsfilter", "caps-filter"))
+    if (!encFilter.FactoryMake("capsfilter", "enc-caps-filter"))
         return false;
     if (options.encoderType == "soft")
     {
-        if (!filter.SetCapsFromString("video/x-raw, format=I420"))
+        if (!encConverter.FactoryMake("videoconvert", "encoder-video-converter"))
+            return false;
+        if (!encFilter.SetCapsFromString("video/x-raw, format=I420"))
             return false;
         if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
             return false;
     }
     else
     {
-        if (!filter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
+        if (!encConverter.FactoryMake("nvvideoconvert", "encoder-nv-video-converter"))
+            return false;
+        if (!encFilter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
             return false;
         if (!encoder.FactoryMake("nvv4l2h264enc", "nvv4l2h264enc-encoder"))
             return false;
@@ -115,18 +115,27 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
         return false;
     sink.Set("location", options.output);
 
-    if (!pipeline.BinAdd(source, demuxer, decParser, decoder))
+    if (!pipeline.BinAdd(source, demuxOrDepay, decParser, decoder))
         return false;
-    if (!pipeline.BinAdd(streamMuxer, detector))
+    if (!pipeline.BinAdd(streamMuxer, detector, annConverter))
         return false;
-    if (!pipeline.BinAdd(filter, converter, encoder, encParser, muxer, sink))
-        return false;
-
-    if (!Gst::StaticLink(source, demuxer))
+    if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
         return false;
 
-    if (!Gst::DynamicLink(demuxer, decParser))
-        return false;
+    if (options.Rtsp())
+    {
+        if (!Gst::DynamicLink(source, demuxOrDepay))
+            return false;
+        if (!Gst::StaticLink(demuxOrDepay, decParser))
+            return false;
+    }
+    else
+    {
+        if (!Gst::StaticLink(source, demuxOrDepay))
+            return false;
+        if (!Gst::DynamicLink(demuxOrDepay, decParser))
+            return false;
+    }
 
     if (!Gst::StaticLink(decParser, decoder))
         return false;
@@ -134,98 +143,13 @@ bool InitFileDetector(const Options& options, Gst::Element & pipeline)
     if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
         return false;
 
-    if (!Gst::StaticLink(streamMuxer, detector))
+    if (!Gst::StaticLink(streamMuxer, detector, annConverter))
         return false;
 
-    if (!Gst::StaticLink(detector, converter, filter, encoder))
+    if (!Gst::StaticLink(annConverter, encConverter, encFilter, encoder))
         return false;
 
     if (!Gst::StaticLink(encoder, encParser, muxer, sink))
-        return false;
-
-    return true;
-}
-
-bool InitRtspDetector(const Options& options, Gst::Element& pipeline)
-{
-    Gst::Element source, depay, decParser, decoder, converter, filter, encoder, encParser, muxer, sink;
-
-    if (!source.FactoryMake("rtspsrc", "rtsp-source"))
-        return false;
-    source.Set("location", options.source);
-    source.Set("latency", 100);
-
-    if (!depay.FactoryMake("rtph264depay", "h264depay-loader"))
-        return false;
-
-    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
-        return false;
-
-    if (options.decoderType == "soft")
-    {
-        if (!decoder.FactoryMake("avdec_h264", "avdec_h264-decoder"))
-            return false;
-    }
-    else
-    {
-        if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
-            return false;
-    }
-
-    if (options.decoderType == "soft" && options.encoderType == "soft")
-    {
-        if (!converter.FactoryMake("videoconvert", "video-converter"))
-            return false;
-    }
-    else
-    {
-        if (!converter.FactoryMake("nvvideoconvert", "nv-video-converter"))
-            return false;
-    }
-
-    if (!filter.FactoryMake("capsfilter", "caps-filter"))
-        return false;
-    if (options.encoderType == "soft")
-    {
-        if (!filter.SetCapsFromString("video/x-raw, format=I420"))
-            return false;
-        if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
-            return false;
-    }
-    else
-    {
-        if (!filter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
-            return false;
-        if (!encoder.FactoryMake("nvv4l2h264enc", "nvv4l2h264enc-encoder"))
-            return false;
-    }
-
-    if (!encParser.FactoryMake("h264parse", "h264parse-encoder"))
-        return false;
-
-    if (!muxer.FactoryMake("qtmux", "qt-muxer"))
-        return false;
-
-    if (!sink.FactoryMake("filesink", "video-output"))
-        return false;
-    sink.Set("location", options.output);
-    sink.Set("async", FALSE);
-
-    if (!pipeline.BinAdd(source, depay, decParser, decoder, filter))
-        return false;
-    if (!pipeline.BinAdd(converter, encoder, encParser, muxer, sink))
-        return false;
-
-    if (!Gst::DynamicLink(source, depay))
-        return false;
-
-    if (!Gst::StaticLink(depay, decParser, decoder, converter))
-        return false;
-
-    if (!Gst::StaticLink(converter, filter, encoder, encParser))
-        return false;
-
-    if (!Gst::StaticLink(encParser, muxer, sink))
         return false;
 
     return true;
@@ -248,16 +172,8 @@ int main(int argc, char* argv[])
     if (!(loop.BusAddWatch(pipeline) && loop.IoAddWatch()))
         return 1;
 
-    if (options.Rtsp())
-    {
-        if (!InitRtspDetector(options, pipeline))
-            return 1;
-    }
-    else
-    {
-        if (!InitFileDetector(options, pipeline))
-            return 1;
-    }
+    if (!InitPipeline(options, pipeline))
+        return 1;
 
     if (!pipeline.SetState(GST_STATE_PLAYING))
         return 1;
