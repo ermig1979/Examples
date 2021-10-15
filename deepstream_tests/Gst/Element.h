@@ -145,6 +145,33 @@ namespace Gst
             }
         }
 
+        bool AddPadProb(GstPadProbeCallback callback, const String & name)
+        {
+            bool result = false;
+            GstPad * pad = gst_element_get_static_pad(_element, name.c_str());
+            if (pad)
+            {
+                if (gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, callback, NULL, NULL))
+                {
+                    if (Gst::logLevel >= Gst::LogDebug)
+                        std::cout << Name() << ": set prob to pad '" << name << "'." << std::endl;
+                    result = true;
+                }
+                else
+                {
+                    if (Gst::logLevel >= Gst::LogError)
+                        std::cout << Name() << ": Can't set prob to pad '" << name << "'!" << std::endl;
+                }
+                gst_object_unref(pad);
+            }
+            else
+            {
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << Name() << ": Can't get pad '" << name << "'!" << std::endl;
+            }
+            return result;
+        }
+
         bool BinAdd(Element& elem0, Element& elem1)
         {
             return BinAdd(elem0) && BinAdd(elem1);
