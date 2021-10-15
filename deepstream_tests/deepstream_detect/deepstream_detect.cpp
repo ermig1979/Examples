@@ -15,6 +15,7 @@ struct Options : Gst::Options
     Gst::String source;
     Gst::String decoderType;
     Gst::String detectorConfig;
+    int logFrameRate;
     Gst::String output;
     Gst::String encoderType;
     int bitrate;
@@ -24,6 +25,7 @@ struct Options : Gst::Options
     {
         source = GetArg2("-s", "--source");
         detectorConfig = GetArg2("-dc", "--detectorConfig", "./data/detect_0/config.txt", false);
+        logFrameRate = Gst::FromString<int>(GetArg2("-lfr", "--logFrameRate", "30", false));
         output = GetArg2("-o", "--output");
         encoderType = GetArg2("-et", "--encoderType", "hard", false, { "hard", "soft" });
         bitrate = Gst::FromString<int>(GetArg2("-b", "--bitrate", "5000", false))*1000;
@@ -44,71 +46,68 @@ struct Options : Gst::Options
 #define PGIE_CLASS_ID_VEHICLE 0
 #define PGIE_CLASS_ID_PERSON 2
 
-int frame_number = 0;
+int g_frameNumber = 0;
 
 GstPadProbeReturn OsdDrawerCallback(GstPad* pad, GstPadProbeInfo* info, gpointer u_data)
 {
-    GstBuffer* buf = (GstBuffer*)info->data;
-    guint num_rects = 0;
-    NvDsObjectMeta* obj_meta = NULL;
-    guint vehicle_count = 0;
-    guint person_count = 0;
-    NvDsMetaList* l_frame = NULL;
-    NvDsMetaList* l_obj = NULL;
-    NvDsDisplayMeta* display_meta = NULL;
-
-    NvDsBatchMeta* batch_meta = gst_buffer_get_nvds_batch_meta(buf);
-    for (l_frame = batch_meta->frame_meta_list; l_frame != NULL; l_frame = l_frame->next)
+    const Options& options = *(const Options*)u_data;
+    guint total = 0, vehicles = 0, persons = 0;
+    NvDsBatchMeta* batchMeta = gst_buffer_get_nvds_batch_meta((GstBuffer*)info->data);
+    for (NvDsMetaList * frame = batchMeta->frame_meta_list; frame != NULL; frame = frame->next)
     {
-        NvDsFrameMeta* frame_meta = (NvDsFrameMeta*)(l_frame->data);
+        NvDsFrameMeta* frameMeta = (NvDsFrameMeta*)(frame->data);
         int offset = 0;
-        for (l_obj = frame_meta->obj_meta_list; l_obj != NULL; l_obj = l_obj->next) 
+        for (NvDsMetaList * obj = frameMeta->obj_meta_list; obj != NULL; obj = obj->next)
         {
-            obj_meta = (NvDsObjectMeta*)(l_obj->data);
-            if (obj_meta->class_id == PGIE_CLASS_ID_VEHICLE) 
+            NvDsObjectMeta* meta = (NvDsObjectMeta*)(obj->data);
+            if (meta->class_id == PGIE_CLASS_ID_VEHICLE) 
             {
-                vehicle_count++;
-                num_rects++;
+                vehicles++;
+                total++;
             }
-            if (obj_meta->class_id == PGIE_CLASS_ID_PERSON) 
+            if (meta->class_id == PGIE_CLASS_ID_PERSON) 
             {
-                person_count++;
-                num_rects++;
+                persons++;
+                total++;
             }
         }
-        display_meta = nvds_acquire_display_meta_from_pool(batch_meta);
-        NvOSD_TextParams* txt_params = &display_meta->text_params[0];
-        display_meta->num_labels = 1;
-        txt_params->display_text = (char*)g_malloc0(MAX_DISPLAY_LEN);
-        offset = snprintf(txt_params->display_text, MAX_DISPLAY_LEN, "Person = %d ", person_count);
-        offset = snprintf(txt_params->display_text + offset, MAX_DISPLAY_LEN, "Vehicle = %d ", vehicle_count);
+        NvDsDisplayMeta* displayMeta = nvds_acquire_display_meta_from_pool(batchMeta);
+        NvOSD_TextParams* txtParams = &displayMeta->text_params[0];
+        displayMeta->num_labels = 1;
+        txtParams->display_text = (char*)g_malloc0(MAX_DISPLAY_LEN);
+        offset = snprintf(txtParams->display_text, MAX_DISPLAY_LEN, "Person = %d ", persons);
+        offset = snprintf(txtParams->display_text + offset, MAX_DISPLAY_LEN, "Vehicle = %d ", vehicles);
 
         /* Now set the offsets where the string should appear */
-        txt_params->x_offset = 10;
-        txt_params->y_offset = 12;
+        txtParams->x_offset = 10;
+        txtParams->y_offset = 12;
 
         /* Font , font-color and font-size */
-        txt_params->font_params.font_name = "Serif";
-        txt_params->font_params.font_size = 10;
-        txt_params->font_params.font_color.red = 1.0;
-        txt_params->font_params.font_color.green = 1.0;
-        txt_params->font_params.font_color.blue = 1.0;
-        txt_params->font_params.font_color.alpha = 1.0;
+        txtParams->font_params.font_name = "Serif";
+        txtParams->font_params.font_size = 10;
+        txtParams->font_params.font_color.red = 1.0;
+        txtParams->font_params.font_color.green = 1.0;
+        txtParams->font_params.font_color.blue = 1.0;
+        txtParams->font_params.font_color.alpha = 1.0;
 
         /* Text background color */
-        txt_params->set_bg_clr = 1;
-        txt_params->text_bg_clr.red = 0.0;
-        txt_params->text_bg_clr.green = 0.0;
-        txt_params->text_bg_clr.blue = 0.0;
-        txt_params->text_bg_clr.alpha = 1.0;
+        txtParams->set_bg_clr = 1;
+        txtParams->text_bg_clr.red = 0.0;
+        txtParams->text_bg_clr.green = 0.0;
+        txtParams->text_bg_clr.blue = 0.0;
+        txtParams->text_bg_clr.alpha = 1.0;
 
-        nvds_add_display_meta_to_frame(frame_meta, display_meta);
+        nvds_add_display_meta_to_frame(frameMeta, displayMeta);
     }
-
-    g_print("Frame Number = %d Number of objects = %d " 
-        "Vehicle Count = %d Person Count = %d\n",
-        frame_number, num_rects, vehicle_count, person_count);
-    frame_number++;
+    if (Gst::logLevel >= Gst::LogInfo && g_frameNumber % options.logFrameRate == 0)
+    {
+        std::cout << "Frame[" << g_frameNumber;
+        std::cout << "]: (Total: " << total;
+        std::cout << ", Vehicles: " << vehicles;
+        std::cout << ", Persons: " << persons;
+        std::cout << ")." << std::endl;
+    }
+    g_frameNumber++;
     return GST_PAD_PROBE_OK;
 }
 
@@ -226,7 +225,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!Gst::StaticLink(encoder, encParser, muxer, sink))
         return false;
 
-    if (!osdDrawer.AddPadProb(OsdDrawerCallback, "sink"))
+    if (!osdDrawer.AddPadProb("sink", OsdDrawerCallback, (void*)&options))
         return false;
 
     return true;

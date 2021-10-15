@@ -145,13 +145,13 @@ namespace Gst
             }
         }
 
-        bool AddPadProb(GstPadProbeCallback callback, const String & name)
+        bool AddPadProb(const String & name, GstPadProbeCallback callback, void * data = NULL)
         {
             bool result = false;
             GstPad * pad = gst_element_get_static_pad(_element, name.c_str());
             if (pad)
             {
-                if (gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, callback, NULL, NULL))
+                if (gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, callback, data, NULL))
                 {
                     if (Gst::logLevel >= Gst::LogDebug)
                         std::cout << Name() << ": set prob to pad '" << name << "'." << std::endl;
