@@ -100,6 +100,31 @@ namespace Gst
             return _argv[0];
         }
 
+        bool HasArg(const Strings& names) const
+        {
+            for (int a = 1; a < _argc; ++a)
+            {
+                String arg = _argv[a];
+                for (size_t n = 0; n < names.size(); ++n)
+                {
+                    const String& name = names[n];
+                    if (arg.substr(0, name.size()) == name)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        bool HasArg(const String& name) const
+        {
+            return HasArg({ name });
+        }
+
+        bool HasArg(const String& name0, const String& name1) const
+        {
+            return HasArg({ name0, name1 });
+        }
+
     private:
         int _argc;
         char** _argv;

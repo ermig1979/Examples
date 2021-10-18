@@ -89,6 +89,24 @@
     },
     {
       "type": "cppgdb",
+      "name": "deepstream_multi_detect_file",
+      "project": "deepstream_multi_detect\\CMakeLists.txt",
+      "projectTarget": "deepstream_multi_detect",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_multi_detect",
+      "args": [
+        "--source0=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--output=/home/igor.ermolaev/docker_deepstream/detect_out.mp4",
+        "--detectorConfig=./data/detect_0/config.txt",
+        "--encoderType=hard",
+        "--logLevel=4",
+        "--gst-debug-level=1"
+      ],
+      "env": {}
+    },
+    {
+      "type": "cppgdb",
       "name": "deepstream_transcode_rtsp",
       "project": "deepstream_transcode\\CMakeLists.txt",
       "projectTarget": "deepstream_transcode",

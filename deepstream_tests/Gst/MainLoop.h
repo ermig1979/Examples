@@ -142,6 +142,19 @@ namespace Gst
                 }
                 g_main_loop_quit(loop);
                 return TRUE;
+            case GST_MESSAGE_WARNING:
+                if (Gst::logLevel >= Gst::LogWarning)
+                {
+                    gchar* debug;
+                    GError* error;
+                    gst_message_parse_warning(msg, &error, &debug);
+                    g_printerr("WARNING from element %s: %s\n",
+                        GST_OBJECT_NAME(msg->src), error->message);
+                    g_free(debug);
+                    g_printerr("Warning: %s\n", error->message);
+                    g_error_free(error);
+                    return TRUE;
+                }
             case GST_MESSAGE_TAG: type = "Tag"; break;
             case GST_MESSAGE_STATE_CHANGED: type = "State Changed"; break;
             case GST_MESSAGE_NEW_CLOCK: type = "New Clock"; break;
