@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <iomanip>
 
 #include "Utils.h"
 #include "Options.h"
@@ -119,6 +120,13 @@ namespace Gst
     {
         String names[6] = { "Undefined", "Null", "Ready", "Paused", "Playing", "Unknown"};
         return state >= GST_STATE_VOID_PENDING && state <= GST_STATE_PLAYING ? names[(int)state] : names[5];
+    }
+
+    String ToString(int value, int width)
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(width) << value;
+        return ss.str();
     }
 
     bool IsFileExist(const String& name)

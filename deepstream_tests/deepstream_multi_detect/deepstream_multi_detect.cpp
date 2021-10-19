@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include <cuda_runtime_api.h>
 #include "gstnvdsmeta.h"
+#include "gst-nvmessage.h"
 
 #include "Gst/Element.h"
 #include "Gst/Options.h"
 #include "Gst/Utils.h"
 #include "Gst/MainLoop.h"
+#include "Gst/SourceBin.h"
 
 struct Options : Gst::Options
 {

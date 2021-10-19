@@ -18,5 +18,7 @@ namespace Gst
 
     String StateToString(GstState state);
 
+    String ToString(int value, int width);
+
     bool IsFileExist(const String& name);
 }
