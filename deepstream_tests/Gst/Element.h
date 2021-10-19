@@ -112,6 +112,34 @@ namespace Gst
             return true;
         }
 
+        bool Get(const String& name, String & value)
+        {
+            gchar* buffer = NULL;
+            g_object_get(G_OBJECT(_element), name.c_str(), &buffer, NULL);
+            if(buffer)
+            {
+                value = buffer;
+                if (Gst::logLevel >= Gst::LogDebug)
+                    std::cout << "Element '" << Name() << "' property '" << name << "' is equel to '" << value << "'." << std::endl;
+                g_free(buffer);
+                return true;
+            }
+            else
+            {
+                if (Gst::logLevel >= Gst::LogError)
+                    std::cout << "Can' get element '" << Name() << "' property '" << name << "' !" << std::endl;
+                return false;
+            }
+        }
+
+        bool Get(const String& name, int & value)
+        {
+            g_object_get(G_OBJECT(_element), name.c_str(), &value, NULL);
+            if (Gst::logLevel >= Gst::LogDebug)
+                std::cout << "Element '" << Name() << "' property '" << name << "' is equel to '" << value << "'." << std::endl;
+            return true;
+        }
+
         bool SetCapsFromString(const String& string)
         {
             GstCaps * caps = gst_caps_from_string(string.c_str());

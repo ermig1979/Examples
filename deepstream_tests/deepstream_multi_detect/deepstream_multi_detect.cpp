@@ -125,49 +125,63 @@ GstPadProbeReturn OsdDrawerCallback(GstPad* pad, GstPadProbeInfo* info, gpointer
 
 bool InitPipeline(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element source, demuxOrDepay, decParser, decoder, streamMuxer, detector, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink;
-
-    if (IsRtsp(options.sources[0]))
-    {
-        if (!source.FactoryMake("rtspsrc", "rtsp-source"))
-            return false;
-        source.Set("latency", 100);
-
-        if (!demuxOrDepay.FactoryMake("rtph264depay", "h264depay-loader"))
-            return false;
-    }
-    else
-    {
-        if (!source.FactoryMake("filesrc", "file-source"))
-            return false;
-
-        if (!demuxOrDepay.FactoryMake("qtdemux", "qt-demuxer"))
-            return false;
-    }
-    source.Set("location", options.sources[0]);
-
-    if (!decParser.FactoryMake("h264parse", "h264parse-decoder"))
-        return false;
-
-    if (!decoder.FactoryMake("nvv4l2decoder", "nvv4l2-decoder"))
-        return false;
+    Gst::Element streamMuxer, detector, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink;
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
         return false;
-    streamMuxer.Set("batch-size", 1);
+    streamMuxer.Set("batch-size", (int)options.sources.size());
     streamMuxer.Set("height", 1080);
     streamMuxer.Set("width", 1920);
+    if (!pipeline.BinAdd(streamMuxer))
+        return false;
+
+    for (size_t i = 0; i < options.sources.size(); ++i)
+    {
+        Gst::SourceBin sourceBin;
+        if (!sourceBin.CreateSourceBin(options.sources[i], i))
+            return false;
+        if (!pipeline.BinAdd(sourceBin))
+            return false;
+        if (!Gst::PadLink(sourceBin, "src", streamMuxer, Gst::String("sink_") + std::to_string(i)))
+            return false;
+    }
 
     if (!detector.FactoryMake("nvinfer", "nvinference-engine"))
         return false;
     if (!(Gst::IsFileExist(options.detectorConfig) && detector.Set("config-file-path", options.detectorConfig)))
         return false;
+    int batchSize;
+    if (!detector.Get("batch-size", batchSize))
+        return false;
+    if (batchSize != options.sources.size())
+    {
+        if (Gst::logLevel >= Gst::LogWarning)
+            std::cout << "Warning: Override batch size " << batchSize << " from config to " << options.sources.size() << " !" << std::endl;
+        detector.Set("batch-size", options.sources.size());
+    }
+    if (!pipeline.BinAdd(detector))
+        return false;
+
+    if (!tiler.FactoryMake("nvmultistreamtiler", "nv-tiler"))
+        return false;
+    //tiler_rows = (guint)sqrt(num_sources);
+    //tiler_columns = (guint)ceil(1.0 * num_sources / tiler_rows);
+    ///* we set the tiler properties here */
+    //g_object_set(G_OBJECT(tiler), "rows", tiler_rows, "columns", tiler_columns,
+    //    "width", TILED_OUTPUT_WIDTH, "height", TILED_OUTPUT_HEIGHT, NULL);
+    if (!pipeline.BinAdd(tiler))
+        return false;
 
     if (!osdConverter.FactoryMake("nvvideoconvert", "osd-nv-video-converter"))
         return false;
-    if (!osdDrawer.FactoryMake("nvdsosd", "nv-onscreendisplay"))
+    if (!pipeline.BinAdd(osdConverter))
         return false;
 
+    if (!osdDrawer.FactoryMake("nvdsosd", "nv-onscreendisplay"))
+        return false;
+    if (!pipeline.BinAdd(osdDrawer))
+        return false;
+     
     if (!encFilter.FactoryMake("capsfilter", "enc-caps-filter"))
         return false;
     if (options.encoderType == "soft")
@@ -199,46 +213,41 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!sink.FactoryMake("filesink", "video-output"))
         return false;
     sink.Set("location", options.output);
-
-    if (!pipeline.BinAdd(source, demuxOrDepay, decParser, decoder))
-        return false;
-    if (!pipeline.BinAdd(streamMuxer, detector, osdConverter, osdDrawer))
-        return false;
     if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
         return false;
 
-    if (IsRtsp(options.sources[0]))
-    {
-        if (!Gst::DynamicLink(source, demuxOrDepay))
-            return false;
-        if (!Gst::StaticLink(demuxOrDepay, decParser))
-            return false;
-    }
-    else
-    {
-        if (!Gst::StaticLink(source, demuxOrDepay))
-            return false;
-        if (!Gst::DynamicLink(demuxOrDepay, decParser))
-            return false;
-    }
+    //if (IsRtsp(options.sources[0]))
+    //{
+    //    if (!Gst::DynamicLink(source, demuxOrDepay))
+    //        return false;
+    //    if (!Gst::StaticLink(demuxOrDepay, decParser))
+    //        return false;
+    //}
+    //else
+    //{
+    //    if (!Gst::StaticLink(source, demuxOrDepay))
+    //        return false;
+    //    if (!Gst::DynamicLink(demuxOrDepay, decParser))
+    //        return false;
+    //}
 
-    if (!Gst::StaticLink(decParser, decoder))
-        return false;
+    //if (!Gst::StaticLink(decParser, decoder))
+    //    return false;
 
-    if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
-        return false;
+    //if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
+    //    return false;
 
-    if (!Gst::StaticLink(streamMuxer, detector, osdConverter, osdDrawer))
-        return false;
+    //if (!Gst::StaticLink(streamMuxer, detector, osdConverter, osdDrawer))
+    //    return false;
 
-    if (!Gst::StaticLink(osdDrawer, encConverter, encFilter, encoder))
-        return false;
+    //if (!Gst::StaticLink(osdDrawer, encConverter, encFilter, encoder))
+    //    return false;
 
-    if (!Gst::StaticLink(encoder, encParser, muxer, sink))
-        return false;
+    //if (!Gst::StaticLink(encoder, encParser, muxer, sink))
+    //    return false;
 
-    if (!osdDrawer.AddPadProb("sink", OsdDrawerCallback, (void*)&options))
-        return false;
+    //if (!osdDrawer.AddPadProb("sink", OsdDrawerCallback, (void*)&options))
+    //    return false;
 
     return true;
 }

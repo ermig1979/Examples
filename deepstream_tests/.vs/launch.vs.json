@@ -80,6 +80,8 @@
       "args": [
         "--source0=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--source1=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source2=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source3=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--output=/home/igor.ermolaev/docker_deepstream/multi_detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
