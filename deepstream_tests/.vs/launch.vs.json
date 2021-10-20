@@ -43,7 +43,7 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_detect",
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--output=/home/igor.ermolaev/docker_deepstream/detect_out.mp4",
+        "--output=/home/$USER/detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
         "--logLevel=4",
@@ -61,7 +61,7 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_detect",
       "args": [
         "--source=rtsp://172.23.3.10:554/pdd_track_high_fhd",
-        "--output=/home/igor.ermolaev/docker_deepstream/detect_out.mp4",
+        "--output=/home/$USER/detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
         "--logLevel=4",
@@ -82,15 +82,36 @@
         "--source1=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--source2=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--source3=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--output=/home/igor.ermolaev/docker_deepstream/multi_detect_out.mp4",
+        "--output=/home/$USER/multi_detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=1"
       ],
       "env": {}
-    },    
-	{
+    },
+    {
+      "type": "cppgdb",
+      "name": "deepstream_multi_detect_rtsp",
+      "project": "deepstream_multi_detect\\CMakeLists.txt",
+      "projectTarget": "deepstream_multi_detect",
+      "comment": "See http://aka.ms/vslinuxdebug.",
+      "debuggerConfiguration": "gdb",
+      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_multi_detect",
+      "args": [
+        "--source0=rtsp://172.23.3.10:554/crowd_alarm_1_hd",
+        "--source1=rtsp://172.23.3.10:554/pdd_track_high_fhd",
+        "--source2=rtsp://172.23.3.10:554/audio_alarm_fhd",
+        "--source3=rtsp://172.23.3.10:554/pdd_track_high_fhd",
+        "--output=/home/$USER/multi_detect_out.mp4",
+        "--detectorConfig=./data/detect_0/config.txt",
+        "--encoderType=hard",
+        "--logLevel=4",
+        "--gst-debug-level=1"
+      ],
+      "env": {}
+    },
+    {
       "type": "cppgdb",
       "name": "deepstream_transcode_file",
       "project": "deepstream_transcode\\CMakeLists.txt",
@@ -101,7 +122,7 @@
       "args": [
         "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=hard",
-        "--output=/home/igor.ermolaev/docker_deepstream/transcode_out.mp4",
+        "--output=/home/$USER/transcode_out.mp4",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=1"
@@ -119,7 +140,7 @@
       "args": [
         "--source=rtsp://172.23.3.10:554/pdd_track_high_fhd",
         "--decoderType=hard",
-        "--output=/home/igor.ermolaev/docker_deepstream/transcode_out.mp4",
+        "--output=/home/$USER/transcode_out.mp4",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=1"
