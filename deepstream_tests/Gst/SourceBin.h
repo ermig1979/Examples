@@ -12,7 +12,7 @@ namespace Gst
         {
         }
 
-        bool CreateSourceBin(const String& uri, size_t index)
+        bool CreateSourceBin(String uri, size_t index)
         {
             String binName = String("source-bin-") + ToString(index, 2);
             _element = gst_bin_new(binName.c_str());
@@ -27,6 +27,8 @@ namespace Gst
 
             if (!_uriDecoder.FactoryMake("uridecodebin", "uri-decode-bin"))
                 return false;
+            if (uri.substr(0, 7) != "rtsp://" && uri.substr(0, 7) != "file://")
+                uri = String("file://") + uri;
             _uriDecoder.Set("uri", uri);
 
             if (g_signal_connect(G_OBJECT(_uriDecoder.Handle()), "pad-added", G_CALLBACK(NewPadCallback), _element) == 0)

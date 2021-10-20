@@ -2,6 +2,7 @@
 #include <glib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <math.h>
 #include <cuda_runtime_api.h>
 #include "gstnvdsmeta.h"
 #include "gst-nvmessage.h"
@@ -48,84 +49,49 @@ struct Options : Gst::Options
 private:
 };
 
-inline bool IsRtsp(const Gst::String & source)
-{
-    return source.substr(0, 7) == "rtsp://";
-}
-
-#define MAX_DISPLAY_LEN 64
-
-#define PGIE_CLASS_ID_VEHICLE 0
-#define PGIE_CLASS_ID_PERSON 2
-
-int g_frameNumber = 0;
-
-GstPadProbeReturn OsdDrawerCallback(GstPad* pad, GstPadProbeInfo* info, gpointer u_data)
+static GstPadProbeReturn TilerSrcPadBufferProbe(GstPad* pad, GstPadProbeInfo* info, gpointer u_data)
 {
     const Options& options = *(const Options*)u_data;
-    guint total = 0, vehicles = 0, persons = 0;
+    size_t i = 0, n = options.sources.size();
     NvDsBatchMeta* batchMeta = gst_buffer_get_nvds_batch_meta((GstBuffer*)info->data);
-    for (NvDsMetaList * frame = batchMeta->frame_meta_list; frame != NULL; frame = frame->next)
+    for (NvDsMetaList* frame = batchMeta->frame_meta_list; frame != NULL; frame = frame->next, i++)
     {
         NvDsFrameMeta* frameMeta = (NvDsFrameMeta*)(frame->data);
-        int offset = 0;
-        for (NvDsMetaList * obj = frameMeta->obj_meta_list; obj != NULL; obj = obj->next)
+        guint total = 0, vehicles = 0, persons = 0;
+        for (NvDsMetaList* obj = frameMeta->obj_meta_list; obj != NULL; obj = obj->next)
         {
             NvDsObjectMeta* meta = (NvDsObjectMeta*)(obj->data);
-            if (meta->class_id == PGIE_CLASS_ID_VEHICLE) 
+            if (meta->class_id == 0)
             {
                 vehicles++;
                 total++;
             }
-            if (meta->class_id == PGIE_CLASS_ID_PERSON) 
+            if (meta->class_id == 2)
             {
                 persons++;
                 total++;
             }
         }
-        NvDsDisplayMeta* displayMeta = nvds_acquire_display_meta_from_pool(batchMeta);
-        NvOSD_TextParams* txtParams = &displayMeta->text_params[0];
-        displayMeta->num_labels = 1;
-        txtParams->display_text = (char*)g_malloc0(MAX_DISPLAY_LEN);
-        offset = snprintf(txtParams->display_text, MAX_DISPLAY_LEN, "Person = %d ", persons);
-        offset = snprintf(txtParams->display_text + offset, MAX_DISPLAY_LEN, "Vehicle = %d ", vehicles);
-
-        /* Now set the offsets where the string should appear */
-        txtParams->x_offset = 10;
-        txtParams->y_offset = 12;
-
-        /* Font , font-color and font-size */
-        txtParams->font_params.font_name = "Serif";
-        txtParams->font_params.font_size = 10;
-        txtParams->font_params.font_color.red = 1.0;
-        txtParams->font_params.font_color.green = 1.0;
-        txtParams->font_params.font_color.blue = 1.0;
-        txtParams->font_params.font_color.alpha = 1.0;
-
-        /* Text background color */
-        txtParams->set_bg_clr = 1;
-        txtParams->text_bg_clr.red = 0.0;
-        txtParams->text_bg_clr.green = 0.0;
-        txtParams->text_bg_clr.blue = 0.0;
-        txtParams->text_bg_clr.alpha = 1.0;
-
-        nvds_add_display_meta_to_frame(frameMeta, displayMeta);
+        if (Gst::logLevel >= Gst::LogInfo && frameMeta->frame_num % options.logFrameRate == 0)
+        {
+            if(i == 0)
+                std::cout << "Frame[" << frameMeta->frame_num << "]:";
+            std::cout << " Src-" << i;
+            std::cout << " (T: " << total;
+            std::cout << ", V: " << vehicles;
+            std::cout << ", P: " << persons;
+            if(i == n - 1)
+                std::cout << ")." << std::endl;
+            else
+                std::cout << "),  ";
+        }    
     }
-    if (Gst::logLevel >= Gst::LogInfo && g_frameNumber % options.logFrameRate == 0)
-    {
-        std::cout << "Frame[" << g_frameNumber;
-        std::cout << "]: (Total: " << total;
-        std::cout << ", Vehicles: " << vehicles;
-        std::cout << ", Persons: " << persons;
-        std::cout << ")." << std::endl;
-    }
-    g_frameNumber++;
     return GST_PAD_PROBE_OK;
 }
 
 bool InitPipeline(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element streamMuxer, detector, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink;
+    Gst::Element streamMuxer, detector, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink, queue[5];
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
         return false;
@@ -134,6 +100,14 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     streamMuxer.Set("width", 1920);
     if (!pipeline.BinAdd(streamMuxer))
         return false;
+
+    for (size_t i = 0; i < 5; ++i)
+    {
+        if (!queue[i].FactoryMake("queue", Gst::String("queue-") + std::to_string(i)))
+            return false;
+        if (!pipeline.BinAdd(queue[i]))
+            return false;
+    }
 
     for (size_t i = 0; i < options.sources.size(); ++i)
     {
@@ -164,11 +138,12 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
 
     if (!tiler.FactoryMake("nvmultistreamtiler", "nv-tiler"))
         return false;
-    //tiler_rows = (guint)sqrt(num_sources);
-    //tiler_columns = (guint)ceil(1.0 * num_sources / tiler_rows);
-    ///* we set the tiler properties here */
-    //g_object_set(G_OBJECT(tiler), "rows", tiler_rows, "columns", tiler_columns,
-    //    "width", TILED_OUTPUT_WIDTH, "height", TILED_OUTPUT_HEIGHT, NULL);
+    guint tilerRows = (guint)::sqrt((double)options.sources.size());
+    guint tilerCols = (guint)::ceil(1.0 * options.sources.size() / tilerRows);
+    tiler.Set("rows", tilerRows);
+    tiler.Set("columns", tilerCols);
+    tiler.Set("height", 1080);
+    tiler.Set("width", 1920);
     if (!pipeline.BinAdd(tiler))
         return false;
 
@@ -179,6 +154,8 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
 
     if (!osdDrawer.FactoryMake("nvdsosd", "nv-onscreendisplay"))
         return false;
+    osdDrawer.Set("process-mode", 0);
+    osdDrawer.Set("display-text", 0);
     if (!pipeline.BinAdd(osdDrawer))
         return false;
      
@@ -212,42 +189,28 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
 
     if (!sink.FactoryMake("filesink", "video-output"))
         return false;
+    sink.Set("qos", 0); // ?
     sink.Set("location", options.output);
     if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
         return false;
 
-    //if (IsRtsp(options.sources[0]))
-    //{
-    //    if (!Gst::DynamicLink(source, demuxOrDepay))
-    //        return false;
-    //    if (!Gst::StaticLink(demuxOrDepay, decParser))
-    //        return false;
-    //}
-    //else
-    //{
-    //    if (!Gst::StaticLink(source, demuxOrDepay))
-    //        return false;
-    //    if (!Gst::DynamicLink(demuxOrDepay, decParser))
-    //        return false;
-    //}
+    if (!Gst::StaticLink(streamMuxer, queue[0], detector, queue[1]))
+        return false;
 
-    //if (!Gst::StaticLink(decParser, decoder))
-    //    return false;
+    if (!Gst::StaticLink(queue[1], tiler, queue[2], osdConverter))
+        return false;
 
-    //if (!Gst::PadLink(decoder, "src", streamMuxer, "sink_0"))
-    //    return false;
+    if (!Gst::StaticLink(osdConverter, queue[3], osdDrawer, queue[4]))
+        return false;
 
-    //if (!Gst::StaticLink(streamMuxer, detector, osdConverter, osdDrawer))
-    //    return false;
+    if (!Gst::StaticLink(queue[4], encConverter, encFilter, encoder))
+        return false;
 
-    //if (!Gst::StaticLink(osdDrawer, encConverter, encFilter, encoder))
-    //    return false;
+    if (!Gst::StaticLink(encoder, encParser, muxer, sink))
+        return false;
 
-    //if (!Gst::StaticLink(encoder, encParser, muxer, sink))
-    //    return false;
-
-    //if (!osdDrawer.AddPadProb("sink", OsdDrawerCallback, (void*)&options))
-    //    return false;
+    if (!detector.AddPadProb("src", TilerSrcPadBufferProbe, (void*)&options))
+        return false;
 
     return true;
 }
@@ -258,12 +221,12 @@ int main(int argc, char* argv[])
 
     gst_init(&argc, &argv);
 
-    std::cout << "Deepstream detect test :" << std::endl;
+    std::cout << "Deepstream multi detect test :" << std::endl;
 
     Gst::MainLoop loop;
 
     Gst::Element pipeline;
-    if (!pipeline.PipelineNew("video-detector"))
+    if (!pipeline.PipelineNew("video-multi-detector"))
         return 1;
 
     if (!(loop.BusAddWatch(pipeline) && loop.IoAddWatch()))
