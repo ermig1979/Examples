@@ -116,10 +116,58 @@ namespace Gst
         return result;
     }
 
-    String StateToString(GstState state)
+    String ToString(GstState state)
     {
         String names[6] = { "Undefined", "Null", "Ready", "Paused", "Playing", "Unknown"};
         return state >= GST_STATE_VOID_PENDING && state <= GST_STATE_PLAYING ? names[(int)state] : names[5];
+    }
+
+    String ToString(GstMessageType type)
+    {
+        switch (type)
+        {
+        case GST_MESSAGE_UNKNOWN: return "Unknown";
+        case GST_MESSAGE_EOS: return "End Of Stream";
+        case GST_MESSAGE_ERROR: return "Error";
+        case GST_MESSAGE_WARNING: return "Warning";
+        case GST_MESSAGE_INFO: return "Info";
+        case GST_MESSAGE_TAG: return "Tag";
+        case GST_MESSAGE_BUFFERING: return "Buffering";
+        case GST_MESSAGE_STATE_CHANGED: return "State Changed";
+        case GST_MESSAGE_STATE_DIRTY: return "State Dirty";
+        case GST_MESSAGE_STEP_DONE: return "Step Done";
+        case GST_MESSAGE_CLOCK_PROVIDE: return "Clock Provide";
+        case GST_MESSAGE_CLOCK_LOST: return "Clocl LOst";
+        case GST_MESSAGE_NEW_CLOCK: return "New Clock";
+        case GST_MESSAGE_STRUCTURE_CHANGE: return "Structure Changed";
+        case GST_MESSAGE_STREAM_STATUS: return "Stream Status";
+        case GST_MESSAGE_APPLICATION: return "Application";
+        case GST_MESSAGE_ELEMENT: return "Element";
+        case GST_MESSAGE_SEGMENT_START: return "Segment Start";
+        case GST_MESSAGE_SEGMENT_DONE: return "Segment Done";
+        case GST_MESSAGE_DURATION_CHANGED: return "Duration Changed";
+        case GST_MESSAGE_LATENCY: return "Latency";
+        case GST_MESSAGE_ASYNC_START: return "Async Start";
+        case GST_MESSAGE_ASYNC_DONE: return "Async Done";
+        case GST_MESSAGE_REQUEST_STATE: return "Request State";
+        case GST_MESSAGE_STEP_START: return "Step Start";
+        case GST_MESSAGE_QOS: return "QOS";
+        case GST_MESSAGE_PROGRESS: return "Progress";
+        case GST_MESSAGE_TOC: return "TOC";
+        case GST_MESSAGE_RESET_TIME: return "Reset Time";
+        case GST_MESSAGE_STREAM_START: return "Stream Start";
+        case GST_MESSAGE_NEED_CONTEXT: return "Need Context";
+        case GST_MESSAGE_HAVE_CONTEXT: return "Have Context";
+        case GST_MESSAGE_EXTENDED: return "Extended";
+        case GST_MESSAGE_DEVICE_ADDED: return "Device Added";
+        case GST_MESSAGE_DEVICE_REMOVED: return "Device Removed";
+        case GST_MESSAGE_PROPERTY_NOTIFY: return "Property Notify";
+        case GST_MESSAGE_STREAM_COLLECTION: return "Stream Collection";
+        case GST_MESSAGE_STREAMS_SELECTED: return "Streams Selected";
+        case GST_MESSAGE_REDIRECT: return "Redirect";
+        default:
+            return "Wrong Message";
+        }
     }
 
     String ToString(int value, int width)

@@ -118,14 +118,11 @@ namespace Gst
         static gboolean BusCallback(GstBus* bus, GstMessage* msg, gpointer data)
         {
             GMainLoop* loop = (GMainLoop*)data;
-            String type;
-            LogLevel level = LogDebug;
-            switch (GST_MESSAGE_TYPE(msg))
+            GstMessageType type = GST_MESSAGE_TYPE(msg);
+            switch (type)
             {
             case GST_MESSAGE_EOS:
                 g_main_loop_quit(loop);
-                type = "End Of Stream";
-                level = LogInfo;
                 break;
             case GST_MESSAGE_ERROR:
                 if (Gst::logLevel >= Gst::LogError)
@@ -155,26 +152,11 @@ namespace Gst
                     g_error_free(error);
                     return TRUE;
                 }
-            case GST_MESSAGE_TAG: type = "Tag"; break;
-            case GST_MESSAGE_STATE_CHANGED: type = "State Changed"; break;
-            case GST_MESSAGE_NEW_CLOCK: type = "New Clock"; break;
             default:
                 break;
             }
             if (Gst::logLevel >= Gst::LogDebug)
-            {
-                std::cout << "Message: ";
-                if (type.empty())
-                {
-                    std::cout << " src = " << msg->src->name;
-                    std::cout << " type = " << msg->type;
-                }
-                else
-                {
-                    std::cout << msg->src->name << " :  \t" << type;
-                }
-                std::cout << std::endl << std::flush;
-            }
+                std::cout << msg->src->name << " send message '" << ToString(type) << "'." << std::endl << std::flush;
             return TRUE;
         }
 

@@ -88,11 +88,11 @@ namespace Gst
             if (result == GST_STATE_CHANGE_FAILURE)
             {
                 if (Gst::logLevel >= Gst::LogError)
-                    std::cout << Name() << ": can't set state " << StateToString(state) << " !" << std::endl;
+                    std::cout << Name() << ": can't set state " << ToString(state) << " !" << std::endl;
                 return false;
             }
             if (Gst::logLevel >= Gst::LogDebug)
-                std::cout << Name() << ": set state to " << StateToString(state) << " ." << std::endl;
+                std::cout << Name() << ": set state to " << ToString(state) << " ." << std::endl;
             return true;
         }
 

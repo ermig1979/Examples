@@ -16,7 +16,9 @@ namespace Gst
 
     bool PadLink(Element& a, const String & aSrcName, Element& b, const String & bSinkName);
 
-    String StateToString(GstState state);
+    String ToString(GstState state);
+
+    String ToString(GstMessageType type);
 
     String ToString(int value, int width);
 
