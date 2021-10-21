@@ -177,6 +177,26 @@ namespace Gst
         return ss.str();
     }
 
+    String ExpandToLeft(const String& value, size_t count)
+    {
+        assert(count >= value.size());
+        std::stringstream ss;
+        for (size_t i = value.size(); i < count; i++)
+            ss << " ";
+        ss << value;
+        return ss.str();
+    }
+
+    String ExpandToRight(const String& value, size_t count)
+    {
+        assert(count >= value.size());
+        std::stringstream ss;
+        ss << value;
+        for (size_t i = value.size(); i < count; i++)
+            ss << " ";
+        return ss.str();
+    }
+
     bool IsFileExist(const String& name)
     {
         if (access(name.c_str(), F_OK) == -1)

@@ -16,6 +16,7 @@
 struct Options : Gst::Options
 {
     Gst::Strings sources;
+    Gst::Ints numbers;
     Gst::String decoderType;
     Gst::String detectorConfig;
     int logFrameRate;
@@ -26,14 +27,19 @@ struct Options : Gst::Options
     Options(int argc, char* argv[])
         : Gst::Options(argc, argv)
     {
+        _sourceNumber = 0;
         for (size_t i = 0;; ++i)
         {
-            Gst::String shortName = Gst::String("-s") + std::to_string(i);
-            Gst::String longName = Gst::String("--source") + std::to_string(i);
-            if (HasArg(shortName, longName))
-                sources.push_back(GetArg2(shortName, longName));
+            Gst::String shortSrcName = Gst::String("-s") + std::to_string(i);
+            Gst::String longSrcName = Gst::String("--source") + std::to_string(i);
+            if (HasArg(shortSrcName, longSrcName))
+                sources.push_back(GetArg2(shortSrcName, longSrcName));
             else
                 break;
+            Gst::String shortNumName = Gst::String("-n") + std::to_string(i);
+            Gst::String longNumName = Gst::String("--number") + std::to_string(i);
+            numbers.push_back(Gst::FromString<int>(GetArg2(shortNumName, longNumName, "1", false)));
+            _sourceNumber += numbers[i];
         }
         detectorConfig = GetArg2("-dc", "--detectorConfig", "./data/detect_0/config.txt", false);
         logFrameRate = Gst::FromString<int>(GetArg2("-lfr", "--logFrameRate", "30", false));
@@ -46,13 +52,19 @@ struct Options : Gst::Options
     {
     }
 
+    int SourceNumber() const
+    {
+        return _sourceNumber;
+    }
+
 private:
+    int _sourceNumber;
 };
 
 static GstPadProbeReturn TilerSrcPadBufferProbe(GstPad* pad, GstPadProbeInfo* info, gpointer u_data)
 {
     const Options& options = *(const Options*)u_data;
-    size_t i = 0, n = options.sources.size();
+    size_t i = 0, n = options.SourceNumber();
     NvDsBatchMeta* batchMeta = gst_buffer_get_nvds_batch_meta((GstBuffer*)info->data);
     for (NvDsMetaList* frame = batchMeta->frame_meta_list; frame != NULL; frame = frame->next, i++)
     {
@@ -75,15 +87,15 @@ static GstPadProbeReturn TilerSrcPadBufferProbe(GstPad* pad, GstPadProbeInfo* in
         if (Gst::logLevel >= Gst::LogInfo && frameMeta->frame_num % options.logFrameRate == 0)
         {
             if(i == 0)
-                std::cout << "Frame[" << frameMeta->frame_num << "]:";
+                std::cout << "Frame[" << Gst::ExpandToRight(std::to_string(frameMeta->frame_num), 5) << "]:";
             std::cout << " Src-" << i;
-            std::cout << " (T: " << total;
-            std::cout << ", V: " << vehicles;
-            std::cout << ", P: " << persons;
+            std::cout << " (T: " << Gst::ExpandToRight(std::to_string(total), 2);
+            std::cout << ", V: " << Gst::ExpandToRight(std::to_string(vehicles), 2);
+            std::cout << ", P: " << Gst::ExpandToRight(std::to_string(persons), 2);
             if(i == n - 1)
                 std::cout << ")." << std::endl;
             else
-                std::cout << "),  ";
+                std::cout << "), ";
         }    
     }
     return GST_PAD_PROBE_OK;
@@ -95,7 +107,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
         return false;
-    streamMuxer.Set("batch-size", (int)options.sources.size());
+    streamMuxer.Set("batch-size", options.SourceNumber());
     streamMuxer.Set("height", 1080);
     streamMuxer.Set("width", 1920);
     if (!pipeline.BinAdd(streamMuxer))
@@ -109,15 +121,18 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
             return false;
     }
 
-    for (size_t i = 0; i < options.sources.size(); ++i)
+    for (size_t s = 0, i = 0; s < options.sources.size(); ++s)
     {
-        Gst::SourceBin sourceBin;
-        if (!sourceBin.CreateSourceBin(options.sources[i], i))
-            return false;
-        if (!pipeline.BinAdd(sourceBin))
-            return false;
-        if (!Gst::PadLink(sourceBin, "src", streamMuxer, Gst::String("sink_") + std::to_string(i)))
-            return false;
+        for (size_t n = 0; n < options.numbers[s]; ++n, ++i)
+        {
+            Gst::SourceBin sourceBin;
+            if (!sourceBin.CreateSourceBin(options.sources[s], i))
+                return false;
+            if (!pipeline.BinAdd(sourceBin))
+                return false;
+            if (!Gst::PadLink(sourceBin, "src", streamMuxer, Gst::String("sink_") + std::to_string(i)))
+                return false;
+        }
     }
 
     if (!detector.FactoryMake("nvinfer", "nvinference-engine"))
@@ -127,19 +142,19 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     int batchSize;
     if (!detector.Get("batch-size", batchSize))
         return false;
-    if (batchSize != options.sources.size())
+    if (batchSize != options.SourceNumber())
     {
         if (Gst::logLevel >= Gst::LogWarning)
-            std::cout << "Warning: Override batch size " << batchSize << " from config to " << options.sources.size() << " !" << std::endl;
-        detector.Set("batch-size", options.sources.size());
+            std::cout << "Warning: Override batch size " << batchSize << " from config to " << options.SourceNumber() << " !" << std::endl;
+        detector.Set("batch-size", options.SourceNumber());
     }
     if (!pipeline.BinAdd(detector))
         return false;
 
     if (!tiler.FactoryMake("nvmultistreamtiler", "nv-tiler"))
         return false;
-    guint tilerRows = (guint)::sqrt((double)options.sources.size());
-    guint tilerCols = (guint)::ceil(1.0 * options.sources.size() / tilerRows);
+    guint tilerRows = (guint)::sqrt((double)options.SourceNumber());
+    guint tilerCols = (guint)::ceil(1.0 * options.SourceNumber() / tilerRows);
     tiler.Set("rows", tilerRows);
     tiler.Set("columns", tilerCols);
     tiler.Set("height", 1080);

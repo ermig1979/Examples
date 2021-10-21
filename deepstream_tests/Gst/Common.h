@@ -4,12 +4,15 @@
 #include <sstream>
 #include <vector>
 
+#include <assert.h>
+
 #include <gst/gst.h>
 
 namespace Gst
 {
     typedef std::string String;
     typedef std::vector<String> Strings;
+    typedef std::vector<int> Ints;
 
     enum LogLevel
     {

@@ -22,5 +22,9 @@ namespace Gst
 
     String ToString(int value, int width);
 
+    String ExpandToLeft(const String& value, size_t count);
+
+    String ExpandToRight(const String& value, size_t count);
+
     bool IsFileExist(const String& name);
 }
