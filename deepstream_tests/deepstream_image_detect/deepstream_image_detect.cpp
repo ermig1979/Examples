@@ -125,7 +125,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     {
         for (size_t n = 0; n < options.numbers[s]; ++n, ++i)
         {
-            Gst::VideoSourceBin sourceBin;
+            Gst::ImageSourceBin sourceBin;
             if (!sourceBin.Create(options.sources[s], i))
                 return false;
             if (!pipeline.BinAdd(sourceBin))
@@ -174,39 +174,14 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!pipeline.BinAdd(osdDrawer))
         return false;
      
-    if (!encFilter.FactoryMake("capsfilter", "enc-caps-filter"))
+    if (!encConverter.FactoryMake("nvvideoconvert", "enc-video-converter"))
         return false;
-    if (options.encoderType == "soft")
-    {
-        if (!encConverter.FactoryMake("videoconvert", "enc-video-converter"))
-            return false;
-        if (!encFilter.SetCapsFromString("video/x-raw, format=I420"))
-            return false;
-        if (!encoder.FactoryMake("x264enc", "x264enc-encoder"))
-            return false;
-    }
-    else
-    {
-        if (!encConverter.FactoryMake("nvvideoconvert", "enc-nv-video-converter"))
-            return false;
-        if (!encFilter.SetCapsFromString("video/x-raw(memory:NVMM), format=I420"))
-            return false;
-        if (!encoder.FactoryMake("nvv4l2h264enc", "nvv4l2h264enc-encoder"))
-            return false;
-    }
-    encoder.Set("bitrate", options.bitrate);
-
-    if (!encParser.FactoryMake("h264parse", "h264parse-encoder"))
+    if (!encoder.FactoryMake("jpegenc", "jpeg-encoder"))
+        return false;    
+    if (!sink.FactoryMake("filesink", "image-output"))
         return false;
-
-    if (!muxer.FactoryMake("qtmux", "qt-muxer"))
-        return false;
-
-    if (!sink.FactoryMake("filesink", "video-output"))
-        return false;
-    sink.Set("qos", 0); // ?
     sink.Set("location", options.output);
-    if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
+    if (!pipeline.BinAdd(encConverter, encoder, sink))
         return false;
 
     if (!Gst::StaticLink(streamMuxer, queue[0], detector, queue[1]))
@@ -218,10 +193,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!Gst::StaticLink(osdConverter, queue[3], osdDrawer, queue[4]))
         return false;
 
-    if (!Gst::StaticLink(queue[4], encConverter, encFilter, encoder))
-        return false;
-
-    if (!Gst::StaticLink(encoder, encParser, muxer, sink))
+    if (!Gst::StaticLink(queue[4], encConverter, encoder, sink))
         return false;
 
     if (!detector.AddPadProb("src", TilerSrcPadBufferProbe, (void*)&options))
@@ -236,12 +208,12 @@ int main(int argc, char* argv[])
 
     gst_init(&argc, &argv);
 
-    std::cout << "Deepstream multi detect test :" << std::endl;
+    std::cout << "Deepstream image detect test :" << std::endl;
 
     Gst::MainLoop loop;
 
     Gst::Element pipeline;
-    if (!pipeline.PipelineNew("video-multi-detector"))
+    if (!pipeline.PipelineNew("image-detector"))
         return 1;
 
     if (!(loop.BusAddWatch(pipeline) && loop.IoAddWatch()))
