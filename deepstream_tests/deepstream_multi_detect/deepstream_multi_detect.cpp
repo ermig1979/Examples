@@ -19,6 +19,7 @@ struct Options : Gst::Options
     Gst::Ints numbers;
     Gst::String decoderType;
     Gst::String detectorConfig;
+    Gst::String colorConfig;
     int logFrameRate;
     Gst::String output;
     Gst::String encoderType;
@@ -42,6 +43,7 @@ struct Options : Gst::Options
             _sourceNumber += numbers[i];
         }
         detectorConfig = GetArg2("-dc", "--detectorConfig", "./data/detect_0/config.txt", false);
+        colorConfig = GetArg2("-cc", "--colorConfig", "./data/color_0/config.txt", false);
         logFrameRate = Gst::FromString<int>(GetArg2("-lfr", "--logFrameRate", "30", false));
         output = GetArg2("-o", "--output");
         encoderType = GetArg2("-et", "--encoderType", "hard", false, { "hard", "soft" });
@@ -103,7 +105,8 @@ static GstPadProbeReturn TilerSrcPadBufferProbe(GstPad* pad, GstPadProbeInfo* in
 
 bool InitPipeline(const Options& options, Gst::Element & pipeline)
 {
-    Gst::Element streamMuxer, detector, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink, queue[5];
+    const size_t queueCount = 5;
+    Gst::Element streamMuxer, detector, tracker, colorClassifier, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink, queue[queueCount];
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
         return false;
@@ -113,7 +116,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!pipeline.BinAdd(streamMuxer))
         return false;
 
-    for (size_t i = 0; i < 5; ++i)
+    for (size_t i = 0; i < queueCount; ++i)
     {
         if (!queue[i].FactoryMake("queue", Gst::String("queue-") + std::to_string(i)))
             return false;
@@ -135,7 +138,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
         }
     }
 
-    if (!detector.FactoryMake("nvinfer", "nvinference-engine"))
+    if (!detector.FactoryMake("nvinfer", "nvinference-engine-detector"))
         return false;
     if (!(Gst::IsFileExist(options.detectorConfig) && detector.Set("config-file-path", options.detectorConfig)))
         return false;
@@ -150,6 +153,24 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     }
     if (!pipeline.BinAdd(detector))
         return false;
+
+    if (!tracker.FactoryMake("nvtracker", "nv-tracker"))
+        return false;
+    tracker.Set("tracker-width", 640);
+    tracker.Set("tracker-height", 360);
+    tracker.Set("gpu-id", 0);
+    tracker.Set("ll-lib-file", "/opt/nvidia/deepstream/deepstream-5.1/lib/libnvds_mot_klt.so");
+    tracker.Set("enable-batch-process", 1);
+    if (!pipeline.BinAdd(tracker))
+        return false;
+
+    if (!colorClassifier.FactoryMake("nvinfer", "nvinference-engine-color-classier"))
+        return false;
+    if (!(Gst::IsFileExist(options.colorConfig) && colorClassifier.Set("config-file-path", options.colorConfig)))
+        return false;
+    if (!pipeline.BinAdd(colorClassifier))
+        return false;
+
 
     if (!tiler.FactoryMake("nvmultistreamtiler", "nv-tiler"))
         return false;
@@ -209,7 +230,10 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
         return false;
 
-    if (!Gst::StaticLink(streamMuxer, queue[0], detector, queue[1]))
+    if (!Gst::StaticLink(streamMuxer, queue[0], detector, tracker))
+        return false;
+
+    if (!Gst::StaticLink(tracker, colorClassifier, queue[1]))
         return false;
 
     if (!Gst::StaticLink(queue[1], tiler, queue[2], osdConverter))

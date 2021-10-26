@@ -98,11 +98,12 @@
       "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_multi_detect",
       "args": [
         "--source0=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--number0=8",
+        "--number0=2",
         "--source1=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
-        "--number1=8",
+        "--number1=2",
         "--output=/home/$USER/multi_detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
+        "--colorConfig=./data/color_0/config.txt",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=1"
