@@ -103,7 +103,7 @@
         "--number1=2",
         "--output=/home/$USER/multi_detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
-        "--colorConfig=./data/color_0/config.txt",
+        "--colorConfig=./data/color_0/config_custom_parse.txt",
         "--encoderType=hard",
         "--logLevel=4",
         "--gst-debug-level=1"

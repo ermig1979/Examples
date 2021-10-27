@@ -44,9 +44,10 @@ namespace Gst
             return true;
         }
 
-        bool FactoryMake(const String& factory, const String& element)
+        bool FactoryMake(const String& factory, const String& element = String())
         {
-            _element = gst_element_factory_make(factory.c_str(), element.c_str());
+            const char* name = element.empty() ? NULL : element.c_str();
+            _element = gst_element_factory_make(factory.c_str(), name);
             if (_element == NULL)
             {
                 if (Gst::logLevel >= Gst::LogError)
@@ -99,7 +100,17 @@ namespace Gst
         bool Set(const String & name, const String& value)
         {
             if (Gst::logLevel >= Gst::LogDebug)
-                std::cout << "Element '" << Name() << "' set property '" << name << "' to '" << value << "'." << std::endl;
+            {
+                String old;
+                gchar* buf = NULL;
+                g_object_get(G_OBJECT(_element), name.c_str(), &buf, NULL);
+                if (buf)
+                {
+                    old = buf;
+                    g_free(buf);
+                }
+                std::cout << "Element '" << Name() << "' change property '" << name << "' from '" << old << "' to '" << value << "'." << std::endl;
+            }
             g_object_set(G_OBJECT(_element), name.c_str(), value.c_str(), NULL);
             return true;
         }
@@ -107,7 +118,11 @@ namespace Gst
         bool Set(const String& name, int value)
         {
             if (Gst::logLevel >= Gst::LogDebug)
-                std::cout << "Element '" << Name() << "' set property '" << name << "' to '" << value << "'." << std::endl;
+            {
+                int old;
+                g_object_get(G_OBJECT(_element), name.c_str(), &old, NULL);
+                std::cout << "Element '" << Name() << "' change property '" << name << "' from '" << old << "' to '" << value << "'." << std::endl;
+            }
             g_object_set(G_OBJECT(_element), name.c_str(), value, NULL);
             return true;
         }

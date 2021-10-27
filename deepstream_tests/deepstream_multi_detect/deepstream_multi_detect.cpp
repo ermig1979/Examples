@@ -6,6 +6,8 @@
 #include <cuda_runtime_api.h>
 #include "gstnvdsmeta.h"
 #include "gst-nvmessage.h"
+#include "gstnvdsinfer.h"
+#include "nvdsinfer_custom_impl.h"
 
 #include "Gst/Element.h"
 #include "Gst/Options.h"
@@ -103,9 +105,91 @@ static GstPadProbeReturn TilerSrcPadBufferProbe(GstPad* pad, GstPadProbeInfo* in
     return GST_PAD_PROBE_OK;
 }
 
+static GstPadProbeReturn ClassifierOutputParsePadBufferProbe(GstPad* pad, GstPadProbeInfo* info, gpointer u_data)
+{
+    const gchar color_classes_str[12][32] = {"Black", "Blue", "Brown", "Gold", "Green", "Grey", "Maroon", "Orange", "Red", "Silver", "White", "Yellow" };
+    const Options& options = *(const Options*)u_data;
+    size_t i = 0, n = options.SourceNumber();
+    static guint use_device_mem = 0;
+    NvDsBatchMeta* batchMeta = gst_buffer_get_nvds_batch_meta(GST_BUFFER(info->data));
+    for (NvDsMetaList* frame = batchMeta->frame_meta_list; frame != NULL; frame = frame->next, ++i)
+    {
+        NvDsFrameMeta* frameMeta = (NvDsFrameMeta*)frame->data;
+        for (NvDsMetaList* obj = frameMeta->obj_meta_list; obj != NULL; obj = obj->next)
+        {
+            NvDsObjectMeta* objMeta = (NvDsObjectMeta*)obj->data;
+            for (NvDsMetaList* user = objMeta->obj_user_meta_list; user != NULL; user = user->next)
+            {
+                NvDsUserMeta* userMeta = (NvDsUserMeta*)user->data;
+                if (userMeta->base_meta.meta_type != NVDSINFER_TENSOR_OUTPUT_META)
+                    continue;
+                NvDsInferTensorMeta* meta = (NvDsInferTensorMeta*)userMeta->user_meta_data;
+
+                for (unsigned int i = 0; i < meta->num_output_layers; i++) 
+                {
+                    NvDsInferLayerInfo* info = &meta->output_layers_info[i];
+                    info->buffer = meta->out_buf_ptrs_host[i];
+                    if (use_device_mem && meta->out_buf_ptrs_dev[i]) 
+                        cudaMemcpy(meta->out_buf_ptrs_host[i], meta->out_buf_ptrs_dev[i], 
+                            info->inferDims.numElements * 4, cudaMemcpyDeviceToHost);
+                }
+
+                NvDsInferDimsCHW dims;
+                getDimsCHWFromDims(dims, meta->output_layers_info[0].inferDims);
+                unsigned int numClasses = dims.c;
+                float* outputCoverageBuffer = (float*)meta->output_layers_info[0].buffer;
+                float maxProbability = 0;
+                bool attrFound = false;
+                NvDsInferAttribute attr;
+
+                for (unsigned int c = 0; c < numClasses; c++) 
+                {
+                    float probability = outputCoverageBuffer[c];
+                    if (probability > 0.51 && probability > maxProbability) 
+                    {
+                        maxProbability = probability;
+                        attrFound = true;
+                        attr.attributeIndex = 0;
+                        attr.attributeValue = c;
+                        attr.attributeConfidence = probability;
+                    }
+                }
+
+                if (attrFound) 
+                {
+                    NvDsClassifierMeta* classifierMeta = nvds_acquire_classifier_meta_from_pool(batchMeta);
+                    classifierMeta->unique_component_id = meta->unique_id;
+
+                    NvDsLabelInfo* labelInfo = nvds_acquire_label_info_meta_from_pool(batchMeta);
+                    labelInfo->result_class_id = attr.attributeValue;
+                    labelInfo->result_prob = attr.attributeConfidence;
+
+                    switch (meta->unique_id) 
+                    {
+                    case 2:
+                        strcpy(labelInfo->result_label, color_classes_str[labelInfo->result_class_id]);
+                        break;
+                    default:
+                        break;
+                    }
+                    gchar* temp = objMeta->text_params.display_text;
+                    objMeta->text_params.display_text = g_strconcat(temp, " ", labelInfo->result_label, nullptr);
+                    g_free(temp);
+
+                    nvds_add_label_info_meta_to_classifier(classifierMeta, labelInfo);
+                    nvds_add_classifier_meta_to_object(objMeta, classifierMeta);
+                }
+            }
+        }
+    }
+    use_device_mem = 1 - use_device_mem;
+    return GST_PAD_PROBE_OK;
+}
+
+
 bool InitPipeline(const Options& options, Gst::Element & pipeline)
 {
-    const size_t queueCount = 5;
+    const size_t queueCount = 6;
     Gst::Element streamMuxer, detector, tracker, colorClassifier, tiler, osdConverter, osdDrawer, encConverter, encFilter, encoder, encParser, muxer, sink, queue[queueCount];
 
     if (!streamMuxer.FactoryMake("nvstreammux", "stream-muxer"))
@@ -118,7 +202,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
 
     for (size_t i = 0; i < queueCount; ++i)
     {
-        if (!queue[i].FactoryMake("queue", Gst::String("queue-") + std::to_string(i)))
+        if (!queue[i].FactoryMake("queue"))
             return false;
         if (!pipeline.BinAdd(queue[i]))
             return false;
@@ -157,7 +241,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!tracker.FactoryMake("nvtracker", "nv-tracker"))
         return false;
     tracker.Set("tracker-width", 640);
-    tracker.Set("tracker-height", 360);
+    tracker.Set("tracker-height", 384);
     tracker.Set("gpu-id", 0);
     tracker.Set("ll-lib-file", "/opt/nvidia/deepstream/deepstream-5.1/lib/libnvds_mot_klt.so");
     tracker.Set("enable-batch-process", 1);
@@ -170,7 +254,6 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
         return false;
     if (!pipeline.BinAdd(colorClassifier))
         return false;
-
 
     if (!tiler.FactoryMake("nvmultistreamtiler", "nv-tiler"))
         return false;
@@ -191,7 +274,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!osdDrawer.FactoryMake("nvdsosd", "nv-onscreendisplay"))
         return false;
     osdDrawer.Set("process-mode", 0);
-    osdDrawer.Set("display-text", 0);
+    osdDrawer.Set("display-text", 1);
     if (!pipeline.BinAdd(osdDrawer))
         return false;
      
@@ -230,25 +313,27 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     if (!pipeline.BinAdd(encConverter, encFilter, encoder, encParser, muxer, sink))
         return false;
 
-    if (!Gst::StaticLink(streamMuxer, queue[0], detector, tracker))
+    if (!Gst::StaticLink(streamMuxer, queue[0], detector, queue[1]))
         return false;
 
-    if (!Gst::StaticLink(tracker, colorClassifier, queue[1]))
+    if (!Gst::StaticLink(queue[1], tracker, colorClassifier, queue[2]))
         return false;
 
-    if (!Gst::StaticLink(queue[1], tiler, queue[2], osdConverter))
+    if (!Gst::StaticLink(queue[2], tiler, queue[3], osdConverter))
         return false;
 
-    if (!Gst::StaticLink(osdConverter, queue[3], osdDrawer, queue[4]))
+    if (!Gst::StaticLink(osdConverter, queue[4], osdDrawer, queue[5]))
         return false;
 
-    if (!Gst::StaticLink(queue[4], encConverter, encFilter, encoder))
+    if (!Gst::StaticLink(queue[5], encConverter, encFilter, encoder))
         return false;
 
     if (!Gst::StaticLink(encoder, encParser, muxer, sink))
         return false;
 
     if (!detector.AddPadProb("src", TilerSrcPadBufferProbe, (void*)&options))
+        return false;
+    if (!tiler.AddPadProb("sink", ClassifierOutputParsePadBufferProbe, (void*)&options))
         return false;
 
     return true;

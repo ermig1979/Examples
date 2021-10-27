@@ -75,23 +75,19 @@ namespace Gst
             const gchar* name = gst_structure_get_name(str);
             GstElement* source_bin = (GstElement*)data;
             GstCapsFeatures* features = gst_caps_get_features(caps, 0);
-
-            /* Need to check if the pad created by the decodebin is for video and not
-             * audio. */
-            if (!strncmp(name, "video", 5)) {
-                /* Link the decodebin pad only if decodebin has picked nvidia
-                 * decoder plugin nvdec_*. We do this by checking if the pad caps contain
-                 * NVMM memory features. */
-                if (gst_caps_features_contains(features, "memory:NVMM")) {
-                    /* Get the source bin ghost pad */
+            if (!strncmp(name, "video", 5)) 
+            {
+                if (gst_caps_features_contains(features, "memory:NVMM")) 
+                {
                     GstPad* bin_ghost_pad = gst_element_get_static_pad(source_bin, "src");
-                    if (!gst_ghost_pad_set_target(GST_GHOST_PAD(bin_ghost_pad),
-                        decoder_src_pad)) {
+                    if (!gst_ghost_pad_set_target(GST_GHOST_PAD(bin_ghost_pad), decoder_src_pad)) 
+                    {
                         g_printerr("Failed to link decoder src pad to source bin ghost pad\n");
                     }
                     gst_object_unref(bin_ghost_pad);
                 }
-                else {
+                else 
+                {
                     g_printerr("Error: Decodebin did not pick nvidia decoder plugin.\n");
                 }
             }

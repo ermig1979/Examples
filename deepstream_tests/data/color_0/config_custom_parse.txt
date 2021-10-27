@@ -19,9 +19,14 @@ gpu-id=0
 gie-unique-id=2
 operate-on-gie-id=1
 operate-on-class-ids=0
-is-classifier=1
 output-blob-names=predictions/Softmax
-classifier-async-mode=1
+classifier-async-mode=0
 classifier-threshold=0.51
+
+## 0=Detector, 1=Classifier, 2=Segmentation, 100=Other
+network-type=100
+# Enable tensor metadata output
+output-tensor-meta=1
+
 #scaling-filter=0
 #scaling-compute-hw=0
