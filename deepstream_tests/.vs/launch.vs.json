@@ -9,9 +9,9 @@
       "projectTarget": "deepstream_decode",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_decode",
       "args": [
-        "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source=/opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=hard",
         "--logLevel=4"
       ],
@@ -24,7 +24,7 @@
       "projectTarget": "deepstream_decode",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_decode",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_decode",
       "args": [
         "--source=rtsp://172.23.3.10:554/audio_alarm_fhd",
         "--decoderType=hard",
@@ -40,9 +40,9 @@
       "projectTarget": "deepstream_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_detect",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_detect",
       "args": [
-        "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source=/home/$USER/faces_0.avi",
         "--output=/home/$USER/detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
         "--encoderType=hard",
@@ -58,7 +58,7 @@
       "projectTarget": "deepstream_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_detect",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_detect",
       "args": [
         "--source=rtsp://172.23.3.10:554/pdd_track_high_fhd",
         "--output=/home/$USER/detect_out.mp4",
@@ -76,9 +76,9 @@
       "projectTarget": "deepstream_image_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_image_detect",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_image_detect",
       "args": [
-        "--source0=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_720p.jpg",
+        "--source0=/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.jpg",
         "--number0=4",
         "--output=/home/$USER/image_detect_out.jpg",
         "--detectorConfig=./data/detect_0/config.txt",
@@ -95,11 +95,11 @@
       "projectTarget": "deepstream_multi_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_multi_detect",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_multi_detect",
       "args": [
-        "--source0=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source0=/opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h264.mp4",
         "--number0=2",
-        "--source1=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source1=/opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h264.mp4",
         "--number1=2",
         "--output=/home/$USER/multi_detect_out.mp4",
         "--detectorConfig=./data/detect_0/config.txt",
@@ -117,7 +117,7 @@
       "projectTarget": "deepstream_multi_detect",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_multi_detect",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_multi_detect",
       "args": [
         "--source0=rtsp://172.23.3.10:554/crowd_alarm_1_hd",
         "--source1=rtsp://172.23.3.10:554/pdd_track_high_fhd",
@@ -138,9 +138,9 @@
       "projectTarget": "deepstream_transcode",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_transcode",
       "args": [
-        "--source=/opt/nvidia/deepstream/deepstream-5.1/samples/streams/sample_1080p_h264.mp4",
+        "--source=/opt/nvidia/deepstream/deepstream/samples/streams/sample_1080p_h264.mp4",
         "--decoderType=hard",
         "--output=/home/$USER/transcode_out.mp4",
         "--encoderType=hard",
@@ -156,7 +156,7 @@
       "projectTarget": "deepstream_transcode",
       "comment": "See http://aka.ms/vslinuxdebug.",
       "debuggerConfiguration": "gdb",
-      "cwd": "/opt/nvidia/deepstream/deepstream-5.1/sources/apps/sample_apps/deepstream_transcode",
+      "cwd": "/opt/nvidia/deepstream/deepstream/sources/apps/sample_apps/deepstream_transcode",
       "args": [
         "--source=rtsp://172.23.3.10:554/pdd_track_high_fhd",
         "--decoderType=hard",

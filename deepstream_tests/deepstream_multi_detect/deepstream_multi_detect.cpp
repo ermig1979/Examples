@@ -243,7 +243,7 @@ bool InitPipeline(const Options& options, Gst::Element & pipeline)
     tracker.Set("tracker-width", 640);
     tracker.Set("tracker-height", 384);
     tracker.Set("gpu-id", 0);
-    tracker.Set("ll-lib-file", "/opt/nvidia/deepstream/deepstream-5.1/lib/libnvds_mot_klt.so");
+    tracker.Set("ll-lib-file", "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so");
     tracker.Set("enable-batch-process", 1);
     if (!pipeline.BinAdd(tracker))
         return false;

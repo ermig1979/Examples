@@ -3,8 +3,8 @@ project(deepstream_multi_detect)
 
 find_package(PkgConfig REQUIRED)
 
-set(CUDA_VER "11.1")
-set(NVDS_VER "5.1")
+set(CUDA_VER "11.4")
+set(NVDS_VER "6.0")
 
 pkg_check_modules(GST REQUIRED gstreamer-1.0)
 include_directories(${GST_INCLUDE_DIRS})
