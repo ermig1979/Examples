@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 
@@ -30,8 +31,6 @@ inline __attribute__((always_inline)) double time()
 }
 #endif
 
-typedef void (*gemm_t)(int M, int N, int K, const float * A, const float * B, float * C);
-
 struct mat_t
 {
     float* p;
@@ -42,6 +41,7 @@ struct mat_t
     int size() const { return m * n; }
 };
 
+typedef void (*gemm_t)(const mat_t& a, const mat_t& b, mat_t& c);
 
 inline void init(mat_t& mat, float min, float max, size_t order = 1)
 {
@@ -76,6 +76,18 @@ struct stat_t
         sqsum += val * val;
         min = std::min(min, val);
         max = std::max(max, val);
+    }
+
+    std::string info(int precision)
+    {
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(precision);
+        ss << "{";
+        ss << " min: " << min;
+        ss << " max: " << max;
+        ss << " avg: " << sum /count;
+        ss << " }";
+        return ss.str();
     }
 };  
 

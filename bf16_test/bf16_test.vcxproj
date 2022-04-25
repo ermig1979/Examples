@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bf16.h" />
     <ClInclude Include="defs.h" />
   </ItemGroup>
   <ItemGroup>
