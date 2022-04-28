@@ -86,6 +86,7 @@ struct stat_t
         ss << " min: " << min;
         ss << " max: " << max;
         ss << " avg: " << sum /count;
+        ss << " std: " << sqrt(sqsum/count - sum * sum / count /count) ;
         ss << " }";
         return ss.str();
     }
