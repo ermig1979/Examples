@@ -11,14 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bf16.h" />
     <ClInclude Include="defs.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>
+    <ProjectGuid>{643FB0FB-2225-4FFA-B9B7-7C91FE67DAC6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>mmosbs</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
