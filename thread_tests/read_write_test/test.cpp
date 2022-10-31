@@ -170,9 +170,12 @@ namespace Test
         MultipleBufferTest(const Options& options)
             : BaseTest("multiple buffer", options)
         {
-            _buffers.reserve(32);
-            _buffers.push_back(new Buffer(_options.size));
-            _current = 0;
+            const size_t SIZE = 4;
+            _buffers.reserve(SIZE);
+            for(size_t i = 0; i < SIZE; ++i)
+                _buffers.push_back(new Buffer(_options.size));
+            _current.store(0);
+            _write.store(0);
             Run();
         }
 
@@ -187,50 +190,72 @@ namespace Test
     protected:
         virtual void Read(Data& data)
         {
-            Buffer* buffer = _buffers[_current];
-            buffer->readers++;
-            data.Assign(buffer->data);
-            buffer->readers--;
+            //while (true)
+            //{
+            //    bool expected = 0;
+            //    if (_write.compare_exchange_weak(expected, 1, std::memory_order_acquire))
+            //        break;
+            //}
+            Buffer* current = _buffers[_current.load()];
+            current->count++;
+            //_write.store(0, std::memory_order_release);
+            data.Assign(current->data);
+            current->count--;
         };
 
         virtual void Write(const Data& data)
         {
-            size_t next = 0, curr = _current;
-            for (; next < _buffers.size(); ++next)
+#if 0
+            size_t next = _buffers.size(), curr = _current;
+            do
+            {
+                next = (curr + 1) % _buffers.size();
+                Buffer* buffer = _buffers[next];
+                while (buffer->count.load());
+            } while (next == _buffers.size());
+            Buffer *buffer = _buffers[next];
+            buffer->data.Assign(data);
+            _current.store(next);
+#else
+            size_t curr = _current;
+            for (size_t next = (curr + 1) % _buffers.size();; next = (next + 1) % _buffers.size())
             {
                 if (next == curr)
                     continue;
                 Buffer* buffer = _buffers[next];
-                if (buffer->readers <= 0)
-                    break;
+                if (buffer->count.load())
+                    continue;
+                buffer->data.Assign(data);
+                //while (true)
+                //{
+                //    bool expected = 0;
+                //    if (_write.compare_exchange_weak(expected, 1, std::memory_order_acquire))
+                //        break;
+                //}
+                _current.store(next);
+                //_write.store(0, std::memory_order_release);
+                break;
             }
-            if(next == _buffers.size())
-                _buffers.push_back(new Buffer(_options.size));
-            Buffer* buffer = _buffers[next];
-            int readers = buffer->readers;
-            if(readers != 0)
-                std::cout << " MultipleBufferTest::Write(): _buffers[" << next
-                << "]->readers = " << readers << " _current = " << curr << std::endl;
-            buffer->data.Assign(data);
-            _current = (int)next;
+#endif
         };
 
     private:
         struct Buffer
         {
             Data data;
-            std::atomic<int> readers;
+            std::atomic<int> count;
 
             Buffer(int size)
                 : data(size)
             {
-                readers = 0;
+                count.store(0);
             }
         };
         typedef std::vector<Buffer*> BufferPtrs;
 
         BufferPtrs _buffers;
-        std::atomic<int> _current;
+        std::atomic<size_t> _current;
+        std::atomic<bool> _write;
     };
 }
 
@@ -238,17 +263,17 @@ namespace Test
 
 int main(int argc, char* argv[])
 {
-    Test::Options options(256, 16, 1.0);
+    Test::Options options(256, 16, 10.0);
 
     //Test::StubTest stub(options);
 
     //Test::ErrorTest error(options);
 
-    Test::StdMutexTest stdMutex(options);
+    //Test::StdMutexTest stdMutex(options);
 
-    Test::StdSharedMutexTest stdSharedMutex(options);
+    //Test::StdSharedMutexTest stdSharedMutex(options);
 
-    Test::CondVarAndAtomicTest condVarAndAtomic(options);
+    //Test::CondVarAndAtomicTest condVarAndAtomic(options);
 
     Test::MultipleBufferTest multipleBuffer(options);
 
