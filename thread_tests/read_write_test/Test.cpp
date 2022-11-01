@@ -1,124 +1,14 @@
-#include "Test.h"
-
-#include <shared_mutex>
-#include <mutex>
-#include <atomic>
+#include "TestStub.h"
+#include "TestMutex.h"
+#include "TestAtomic.h"
 
 namespace Test
 {
-    class StubTest : public BaseTest
-    {
-    public:
-        StubTest(const Options& options)
-            : BaseTest("stub", options)
-        {
-            Run();
-        }
-
-    protected:
-        virtual void Read(Data& data)
-        {
-        };
-
-        virtual void Write(const Data& data)
-        {
-        };
-    };
-
-    //---------------------------------------------------------------------------------------------
-
-    class ErrorTest : public BaseTest
-    {
-    public:
-        ErrorTest(const Options& options)
-            : BaseTest("error", options)
-            , _data(options.size)
-        {
-            Run();
-        }
-
-    protected:
-        virtual void Read(Data& data)
-        {
-            data.Assign(_data);
-        };
-
-        virtual void Write(const Data& data)
-        {
-            _data.Assign(data);
-        };
-
-    private:
-        Data _data;
-    };
-
-    //---------------------------------------------------------------------------------------------
-
-    class StdMutexTest : public BaseTest
-    {
-    public:
-        StdMutexTest(const Options& options)
-            : BaseTest("std::mutex", options)
-            , _data(options.size)
-        {
-            Run();
-        }
-
-    protected:
-        virtual void Read(Data& data)
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            data.Assign(_data);
-        };
-
-        virtual void Write(const Data& data)
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            _data.Assign(data);
-        };
-
-    private:
-        Data _data;
-        std::mutex _mutex;
-    };
-
-    //---------------------------------------------------------------------------------------------
-
-    class StdSharedMutexTest : public BaseTest
-    {
-    public:
-        StdSharedMutexTest(const Options& options)
-            : BaseTest("std::shared_mutex", options)
-            , _data(options.size)
-        {
-            Run();
-        }
-
-    protected:
-        virtual void Read(Data& data)
-        {
-            std::shared_lock<std::shared_mutex> lock(_mutex);
-            data.Assign(_data);
-        };
-
-        virtual void Write(const Data& data)
-        {
-            std::unique_lock<std::shared_mutex> lock(_mutex);
-            _data.Assign(data);
-        };
-
-    private:
-        Data _data;
-        std::shared_mutex _mutex;
-    };
-
-    //---------------------------------------------------------------------------------------------
-
-    class CondVarAndAtomicTest : public BaseTest
+    class CondVarAndAtomicTest : public TestBase
     {
     public:
         CondVarAndAtomicTest(const Options& options)
-            : BaseTest("std::conditional_variable + std::atomic", options)
+            : TestBase("std::conditional_variable + std::atomic", options)
             , _data(options.size)
             , _writers(0)
             , _readers(0)
@@ -164,11 +54,11 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    class MultipleBufferTest : public BaseTest
+    class MultipleBufferTest : public TestBase
     {
     public:
         MultipleBufferTest(const Options& options)
-            : BaseTest("multiple buffer", options)
+            : TestBase("multiple buffer", options)
         {
             const size_t SIZE = 4;
             _buffers.reserve(SIZE);
@@ -261,21 +151,51 @@ namespace Test
 
 //-------------------------------------------------------------------------------------------------
 
+namespace Test
+{
+    void TestWithErrors()
+    {
+        Options options(256, 16, 1.0);
+
+        TestStub stub(options);
+
+        TestNoSync noSync(options);
+    }
+
+    void TestValidated()
+    {
+        Options options(256, 16, 3.0);
+
+        TestMutex stdMutex(options);
+
+        TestSharedMutex stdSharedMutex(options);
+
+        TestAtomicV1 atomicV1(options);
+
+        TestAtomicV2 atomicV2(options);
+
+        TestAtomicV3 atomicV3(options);
+    }
+
+    void TestExperiments()
+    {
+        Options options(256, 16, 3.0);
+
+        //TestAtomicV1 atomicV1(options);
+
+        TestAtomicV3 atomicV3(options);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+
 int main(int argc, char* argv[])
 {
-    Test::Options options(256, 16, 10.0);
+    //Test::TestWithErrors();
 
-    //Test::StubTest stub(options);
+    Test::TestValidated();
 
-    //Test::ErrorTest error(options);
-
-    //Test::StdMutexTest stdMutex(options);
-
-    //Test::StdSharedMutexTest stdSharedMutex(options);
-
-    //Test::CondVarAndAtomicTest condVarAndAtomic(options);
-
-    Test::MultipleBufferTest multipleBuffer(options);
+    //Test::TestExperiments();
 
     return 0;
 }

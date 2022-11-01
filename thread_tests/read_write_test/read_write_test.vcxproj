@@ -11,13 +11,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Data.h" />
     <ClInclude Include="Defs.h" />
-    <ClInclude Include="Test.h" />
+    <ClInclude Include="TestAtomic.h" />
+    <ClInclude Include="TestBase.h" />
+    <ClInclude Include="TestMutex.h" />
+    <ClInclude Include="TestStub.h" />
     <ClInclude Include="Utils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{643FB0FB-2225-4FFA-B9B7-7C91FE67DAC6}</ProjectGuid>

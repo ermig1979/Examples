@@ -17,7 +17,7 @@ namespace Test
         }
     }; 
 
-    class BaseTest
+    class TestBase
     {
     public:
         typedef int Int;
@@ -27,26 +27,28 @@ namespace Test
 
     public:
 
-        BaseTest(const String& name, const Options& options)
-            : _name(name)
+        TestBase(const String& description, const Options& options)
+            : _description(description)
             , _options(options)
             , _finish(0)
             , _writeCount(0)
+            , _errors(0)
         {
         }
 
         void Run()
         {
-            std::cout << "Start test '" << _name << "' read " << _options.size << " B for " << _options.time * 1000;
+            std::cout << "Start test '" << _description << "'";
+            std::cout << " read " << _options.size << " B for " << _options.time * 1000;
             std::cout << " ms in " << _options.count << " threads: " << std::endl;
 
             _writeCount = 0;
             _readCounts.resize(_options.count, 0);
             _finish = Time() + _options.time;
-            _writeThread = Thread(&BaseTest::WriteTask, this);
+            _writeThread = Thread(&TestBase::WriteTask, this);
             _readThreads.reserve(_options.count);
             for (int i = 0; i < _options.count; ++i)
-                _readThreads.emplace_back(Thread(&BaseTest::ReadTask, this, i));
+                _readThreads.emplace_back(Thread(&TestBase::ReadTask, this, i));
 
             if (_writeThread.joinable())
                 _writeThread.join();
@@ -60,12 +62,12 @@ namespace Test
             for (int i = 0; i < _options.count; ++i)
                 readCount += _readCounts[i];
 
-            std::cout << " Write count: " << PrettyString(_writeCount) << std::endl;
-            std::cout << " Read count: " << PrettyString(readCount) << std::endl;
-            std::cout << "End test '" << _name << "' " << std::endl << std::endl;
+            std::cout << " Writes per second: " << PerSecondString(_writeCount) << std::endl;
+            std::cout << " Reads per second:  " << PerSecondString(readCount) << std::endl;
+            std::cout << "End test " << (_errors ? "with errors!" : "successfully.") << std::endl << std::endl;
         }
 
-        virtual ~BaseTest()
+        virtual ~TestBase()
         {
         }
 
@@ -99,6 +101,7 @@ namespace Test
                 if (!data.Valid())
                 {
                     std::cout << " Read error in thread " << id << "!" << std::endl;
+                    _errors++;
                     return;
                 }
                 _readCounts[id]++;
@@ -107,10 +110,15 @@ namespace Test
             }
         };
 
-        String _name;
+        String PerSecondString(size_t count) const
+        {
+            return PrettyString(size_t(count / _options.time));
+        }
+
+        String _description;
         Options _options;
         double _finish;
-        Int _writeCount;
+        Int _writeCount, _errors;
         Ints _readCounts;
         Thread _writeThread;
         Threads _readThreads;
