@@ -4,10 +4,10 @@
 
 namespace Test
 {
-    class CondVarAndAtomicTest : public TestBase
+    class CondVarV1Test : public TestBase
     {
     public:
-        CondVarAndAtomicTest(const Options& options)
+        CondVarV1Test(const Options& options)
             : TestBase("std::conditional_variable + std::atomic", options)
             , _data(options.size)
             , _writers(0)
@@ -42,12 +42,64 @@ namespace Test
             _data.Assign(data);
             _writers--;
             _start.notify_all();
-            Sleep(1);
+            //Sleep(1);
         };
 
     private:
         Data _data;
         std::atomic<int> _writers, _readers;
+        std::mutex _mutex;
+        std::condition_variable _start;
+    };
+
+    //---------------------------------------------------------------------------------------------
+
+    class CondVarV2Test : public TestBase
+    {
+        static const int WRITE_BIT = 0x00010000;
+    public:
+        CondVarV2Test(const Options& options)
+            : TestBase("std::conditional_variable + std::atomic", options)
+            , _data(options.size)
+            , _atomic(0)
+        {
+            Run();
+        }
+
+    protected:
+        virtual void Read(Data& data)
+        {
+            if (_atomic & WRITE_BIT)
+            {
+                std::unique_lock<std::mutex> lock(_mutex);
+                _start.wait(lock, [this] {return (_atomic & WRITE_BIT) == 0; });
+            }
+            _start.notify_all();
+            _atomic++;
+            data.Assign(_data);
+            _atomic--;
+            if (_atomic == 0)
+                _start.notify_all();
+        };
+
+        virtual void Write(const Data& data)
+        {
+            _atomic.fetch_or(WRITE_BIT);
+            if (_atomic & (~WRITE_BIT))
+            {
+                std::unique_lock<std::mutex> lock(_mutex);
+                _start.wait(lock, [this] {return  (_atomic & (~WRITE_BIT)) == 0; });
+            }
+            //_start.notify_all();
+            _data.Assign(data);
+            _atomic.store(0);
+            _start.notify_all();
+            //Sleep(1);
+        };
+
+    private:
+        Data _data;
+        std::atomic<int> _atomic;
         std::mutex _mutex;
         std::condition_variable _start;
     };
@@ -170,6 +222,8 @@ namespace Test
 
         TestSharedMutex stdSharedMutex(options);
 
+        //CondVarV1Test condVarV1(options);
+
         TestAtomicV1 atomicV1(options);
 
         TestAtomicV2 atomicV2(options);
@@ -179,11 +233,9 @@ namespace Test
 
     void TestExperiments()
     {
-        Options options(256, 16, 3.0);
+        Options options(256, 2, 3.0);
 
-        //TestAtomicV1 atomicV1(options);
-
-        TestAtomicV3 atomicV3(options);
+        CondVarV2Test condVarV2(options);
     }
 }
 
@@ -193,9 +245,9 @@ int main(int argc, char* argv[])
 {
     //Test::TestWithErrors();
 
-    Test::TestValidated();
+    //Test::TestValidated();
 
-    //Test::TestExperiments();
+    Test::TestExperiments();
 
     return 0;
 }

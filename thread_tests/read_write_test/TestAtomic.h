@@ -121,6 +121,7 @@ namespace Test
                 int readers = _sync.load(std::memory_order_acquire) & (~WRITE_BIT);
                 if (_sync.compare_exchange_weak(readers, readers + 1, std::memory_order_acquire))
                     break;
+                //Sleep(0);
             }
             data.Assign(_data);
             _sync.fetch_sub(1, std::memory_order_release);
@@ -129,7 +130,8 @@ namespace Test
         virtual void Write(const Data& data)
         {
             _sync.fetch_or(WRITE_BIT, std::memory_order_acquire);
-            while (_sync.load(std::memory_order_acquire) & (~WRITE_BIT));
+            while (_sync.load(std::memory_order_acquire) & (~WRITE_BIT))
+                Sleep(0);
             _data.Assign(data);
             _sync.store(0, std::memory_order_release);
         };
