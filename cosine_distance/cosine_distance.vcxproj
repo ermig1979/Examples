@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="src\defs.h" />
     <ClInclude Include="src\descriptor.h" />
+    <ClInclude Include="src\float16.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\test.cpp" />

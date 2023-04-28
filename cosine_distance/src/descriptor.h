@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "float16.h"
 
 namespace cs
 {
@@ -22,10 +23,10 @@ namespace cs
 
     //-------------------------------------------------------------------------------------------------
 
-    class DescriptorFloat : public Descriptor
+    class DescriptorFloat32 : public Descriptor
     {
     public:
-        DescriptorFloat()
+        DescriptorFloat32()
         {
         }
 
@@ -60,9 +61,14 @@ namespace cs
             return !_data.empty();
         }
 
+        const float * Data() const
+        {
+            return _data.data();
+        }
+
         virtual String Name() const
         {
-            return "Float";
+            return "Float32";
         }
 
         virtual size_t Size() const
@@ -72,13 +78,13 @@ namespace cs
 
         virtual float CosineDistance(const Descriptor& other) const
         {
-            return CosineDistanceFloat(dynamic_cast<const DescriptorFloat&>(other));
+            return CosineDistanceFloat(dynamic_cast<const DescriptorFloat32&>(other));
         }
 
     protected:
         Buffer32f _data;
 
-        float CosineDistanceFloat(const DescriptorFloat& other) const
+        float CosineDistanceFloat(const DescriptorFloat32& other) const
         {
             assert(this->Size() == other.Size());
             float tt = 0, to = 0, oo = 0;
@@ -93,6 +99,56 @@ namespace cs
             return 1.0f - to / ::sqrt(oo * tt);
         }
     };
+    typedef std::shared_ptr<DescriptorFloat32> DescriptorFloat32Ptr;
+    typedef std::vector<DescriptorFloat32Ptr> DescriptorFloat32Ptrs;
+
+    //-------------------------------------------------------------------------------------------------
+
+    class DescriptorFloat16 : public Descriptor
+    {
+    public:
+        DescriptorFloat16(const DescriptorFloat32 & orig)
+        {
+            _data.resize(orig.Size());
+            for (size_t i = 0; i < _data.size(); ++i)
+                _data[i] = Float32ToFloat16(orig.Data()[i]);
+        }
+
+        virtual String Name() const
+        {
+            return "Float16";
+        }
+
+        virtual size_t Size() const
+        {
+            return _data.size();
+        }
+
+        virtual float CosineDistance(const Descriptor& other) const
+        {
+            return CosineDistanceFloat16(dynamic_cast<const DescriptorFloat16&>(other));
+        }
+
+    protected:
+        Buffer16u _data;
+
+        float CosineDistanceFloat16(const DescriptorFloat16& other) const
+        {
+            assert(this->Size() == other.Size());
+            float tt = 0, to = 0, oo = 0;
+            for (size_t i = 0; i < _data.size(); ++i)
+            {
+                float _t = Float16ToFloat32(this->_data[i]);
+                float _o = Float16ToFloat32(other._data[i]);
+                tt += _t * _t;
+                to += _t * _o;
+                oo += _o * _o;
+            }
+            return 1.0f - to / ::sqrt(oo * tt);
+        }
+    };
+    typedef std::shared_ptr<DescriptorFloat16> DescriptorFloat16Ptr;
+    typedef std::vector<DescriptorFloat16Ptr> DescriptorFloat16Ptrs;
 }
 
 

@@ -40,8 +40,14 @@ namespace cs
 {
     typedef std::vector<float> Buffer32f;
     typedef std::vector<uint32_t> Buffer32u;
+    typedef std::vector<uint16_t> Buffer16u;
     typedef std::vector<uint8_t> Buffer8u;
     typedef std::string String;
+
+    template<class T> inline T Square(const T & value)
+    {
+        return value * value;
+    }
 }
 
 
