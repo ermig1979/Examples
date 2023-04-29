@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <algorithm>
 #include <vector>
@@ -47,6 +48,16 @@ namespace cs
     template<class T> inline T Square(const T & value)
     {
         return value * value;
+    }
+
+    inline String ExpandLeft(const String& value, size_t count)
+    {
+        count = std::max(count, value.size());
+        std::stringstream ss;
+        for (size_t i = value.size(); i < count; i++)
+            ss << " ";
+        ss << value;
+        return ss.str();
     }
 }
 

@@ -22,10 +22,44 @@ namespace cs
 		return distances;
 	}
 
-	void Test(const cs::DescriptorFloat32Ptrs & original)
+	void Test(const DescriptorFloat32Ptrs & original)
 	{
 		Buffer32f dist32f = MutualCosineDistances(original);
 		Buffer32f dist16f = MutualCosineDistances(Convert<DescriptorFloat16>(original));
+	}
+
+	void CalcHist(const DescriptorFloat32 & desc, Buffer32u & hist, int lo, int hi, bool clear = true)
+	{
+		hist.resize(hi - lo + 1);
+		if (clear)
+		{
+			for (size_t i = 0; i < hist.size(); ++i)
+				hist[i] = 0;
+		}
+		for (size_t i = 0; i < desc.Size(); ++i)
+		{
+			int index = std::min(std::max((int)(desc.Data()[i] - lo), 0), hi - lo);
+			hist[index]++;
+		}
+	}
+
+	void PrintHist(const DescriptorFloat32Ptrs& desc, int lo, int hi)
+	{
+		std::cout << "Descriptor histograms:" << std::endl;
+		Buffer32u hist;
+		for (int i = lo; i <= hi; ++i)
+			std::cout << ExpandLeft(std::to_string(i), 4);
+		std::cout << std::endl;
+		for (int i = lo; i <= hi; ++i)
+			std::cout << "----";
+		std::cout << std::endl;
+		for (size_t i = 0; i < desc.size(); ++i)
+		{
+			CalcHist(*desc[i], hist, lo, hi, true);
+			for (int j = lo; j <= hi; ++j)
+				std::cout << ExpandLeft(std::to_string(hist[j - lo]), 4);
+			std::cout << std::endl;
+		}
 	}
 }
 
@@ -53,9 +87,26 @@ int main(int argc, char* argv[])
 			original[i] = descriptor;
 		}
 	}
+	else if (mode == "file")
+	{
+		if (argc < 3)
+			return 1;
+		std::string path = argv[2];
+		std::ifstream ifs(path.c_str());
+		if (!ifs.is_open())
+			return 1;
+		cs::DescriptorFloat32Ptr desc = std::make_shared<cs::DescriptorFloat32>();
+		while (desc->Load(ifs))
+		{
+			original.push_back(desc);
+			desc = std::make_shared<cs::DescriptorFloat32>();
+		}
+		ifs.close();
+	}
 	else
 		return 1;
 
+	cs::PrintHist(original, -21, 21);
 	cs::Test(original);
 
 	return 0;
