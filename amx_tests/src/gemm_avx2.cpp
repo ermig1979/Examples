@@ -3,75 +3,51 @@
 namespace Avx2
 {
     void Micro32f6x16(int K, const float* A, int lda, int step,
-        const float* B, int ldb, float* C, int ldc)
+        const float* B, int ldb, float* C, int ldc, int zero)
     {
-        __m256 c00 = _mm256_setzero_ps();
-        __m256 c10 = _mm256_setzero_ps();
-        __m256 c20 = _mm256_setzero_ps();
-        __m256 c30 = _mm256_setzero_ps();
-        __m256 c40 = _mm256_setzero_ps();
-        __m256 c50 = _mm256_setzero_ps();
-        __m256 c01 = _mm256_setzero_ps();
-        __m256 c11 = _mm256_setzero_ps();
-        __m256 c21 = _mm256_setzero_ps();
-        __m256 c31 = _mm256_setzero_ps();
-        __m256 c41 = _mm256_setzero_ps();
-        __m256 c51 = _mm256_setzero_ps();
-        const int offset0 = lda * 0;
-        const int offset1 = lda * 1;
-        const int offset2 = lda * 2;
-        const int offset3 = lda * 3;
-        const int offset4 = lda * 4;
-        const int offset5 = lda * 5;
-        __m256 b0, b1, a0, a1;
+        __m256 c00, c10, c20, c30, c40, c50, c01, c11, c21, c31, c41, c51, b0, b1, a0;
+        if (zero)
+        {
+            c00 = _mm256_setzero_ps(), c01 = _mm256_setzero_ps();
+            c10 = _mm256_setzero_ps(), c11 = _mm256_setzero_ps();
+            c20 = _mm256_setzero_ps(), c21 = _mm256_setzero_ps();
+            c30 = _mm256_setzero_ps(), c31 = _mm256_setzero_ps();
+            c40 = _mm256_setzero_ps(), c41 = _mm256_setzero_ps();
+            c50 = _mm256_setzero_ps(), c51 = _mm256_setzero_ps();
+        }
+        else
+        {
+            c00 = _mm256_loadu_ps(C + 0 * ldc + 0), c01 = _mm256_loadu_ps(C + 0 * ldc + 8);
+            c10 = _mm256_loadu_ps(C + 1 * ldc + 0), c11 = _mm256_loadu_ps(C + 1 * ldc + 8);
+            c20 = _mm256_loadu_ps(C + 2 * ldc + 0), c21 = _mm256_loadu_ps(C + 2 * ldc + 8);
+            c30 = _mm256_loadu_ps(C + 3 * ldc + 0), c31 = _mm256_loadu_ps(C + 3 * ldc + 8);
+            c40 = _mm256_loadu_ps(C + 4 * ldc + 0), c41 = _mm256_loadu_ps(C + 4 * ldc + 8);
+            c50 = _mm256_loadu_ps(C + 5 * ldc + 0), c51 = _mm256_loadu_ps(C + 5 * ldc + 8);
+        }
+        const int oa0 = lda * 0;
+        const int oa1 = lda * 1;
+        const int oa2 = lda * 2;
+        const int oa3 = lda * 3;
+        const int oa4 = lda * 4;
+        const int oa5 = lda * 5;
         for (int k = 0; k < K; k++)
         {
             b0 = _mm256_loadu_ps(B + 0);
             b1 = _mm256_loadu_ps(B + 8);
-            a0 = _mm256_set1_ps(A[offset0]);
-            a1 = _mm256_set1_ps(A[offset1]);
-            c00 = _mm256_fmadd_ps(a0, b0, c00);
-            c01 = _mm256_fmadd_ps(a0, b1, c01);
-            c10 = _mm256_fmadd_ps(a1, b0, c10);
-            c11 = _mm256_fmadd_ps(a1, b1, c11);
-            a0 = _mm256_set1_ps(A[offset2]);
-            a1 = _mm256_set1_ps(A[offset3]);
-            c20 = _mm256_fmadd_ps(a0, b0, c20);
-            c21 = _mm256_fmadd_ps(a0, b1, c21);
-            c30 = _mm256_fmadd_ps(a1, b0, c30);
-            c31 = _mm256_fmadd_ps(a1, b1, c31);
-            a0 = _mm256_set1_ps(A[offset4]);
-            a1 = _mm256_set1_ps(A[offset5]);
-            c40 = _mm256_fmadd_ps(a0, b0, c40);
-            c41 = _mm256_fmadd_ps(a0, b1, c41);
-            c50 = _mm256_fmadd_ps(a1, b0, c50);
-            c51 = _mm256_fmadd_ps(a1, b1, c51);
+            a0 = _mm256_set1_ps(A[oa0]), c00 = _mm256_fmadd_ps(a0, b0, c00), c01 = _mm256_fmadd_ps(a0, b1, c01);
+            a0 = _mm256_set1_ps(A[oa1]), c10 = _mm256_fmadd_ps(a0, b0, c10), c11 = _mm256_fmadd_ps(a0, b1, c11);
+            a0 = _mm256_set1_ps(A[oa2]), c20 = _mm256_fmadd_ps(a0, b0, c20), c21 = _mm256_fmadd_ps(a0, b1, c21);
+            a0 = _mm256_set1_ps(A[oa3]), c30 = _mm256_fmadd_ps(a0, b0, c30), c31 = _mm256_fmadd_ps(a0, b1, c31);
+            a0 = _mm256_set1_ps(A[oa4]), c40 = _mm256_fmadd_ps(a0, b0, c40), c41 = _mm256_fmadd_ps(a0, b1, c41);
+            a0 = _mm256_set1_ps(A[oa5]), c50 = _mm256_fmadd_ps(a0, b0, c50), c51 = _mm256_fmadd_ps(a0, b1, c51);
             B += ldb; A += step;
         }
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c00, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c01, _mm256_loadu_ps(C + 8)));
-        C += ldc;
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c10, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c11, _mm256_loadu_ps(C + 8)));
-        C += ldc;
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c20, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c21, _mm256_loadu_ps(C + 8)));
-        C += ldc;
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c30, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c31, _mm256_loadu_ps(C + 8)));
-        C += ldc;
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c40, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c41, _mm256_loadu_ps(C + 8)));
-        C += ldc;
-        _mm256_storeu_ps(C + 0, _mm256_add_ps(c50, _mm256_loadu_ps(C + 0)));
-        _mm256_storeu_ps(C + 8, _mm256_add_ps(c51, _mm256_loadu_ps(C + 8)));
-    }
-
-    void InitC(int M, int N, float* C, int ldc)
-    {
-        for (int i = 0; i < M; ++i, C += ldc)
-            for (int j = 0; j < N; j += 8)
-                _mm256_storeu_ps(C + j, _mm256_setzero_ps());
+        _mm256_storeu_ps(C + 0 * ldc + 0, c00), _mm256_storeu_ps(C + 0 * ldc + 8, c01);
+        _mm256_storeu_ps(C + 1 * ldc + 0, c10), _mm256_storeu_ps(C + 1 * ldc + 8, c11);
+        _mm256_storeu_ps(C + 2 * ldc + 0, c20), _mm256_storeu_ps(C + 2 * ldc + 8, c21);
+        _mm256_storeu_ps(C + 3 * ldc + 0, c30), _mm256_storeu_ps(C + 3 * ldc + 8, c31);
+        _mm256_storeu_ps(C + 4 * ldc + 0, c40), _mm256_storeu_ps(C + 4 * ldc + 8, c41);
+        _mm256_storeu_ps(C + 5 * ldc + 0, c50), _mm256_storeu_ps(C + 5 * ldc + 8, c51);
     }
 
     void Reorder32fA6(const float* A, int lda, int M, int K, float* bufA)
@@ -117,20 +93,20 @@ namespace Avx2
     }
 
     void Macro32f(int M, int N, int K, const float* A, const float* B, 
-        int ldb, float* bufB, bool reorderB, float* C, int ldc)
+        int ldb, float* bufB, bool reorderB, float* C, int ldc, int zero)
     {
         for (int j = 0; j < N; j += 16)
         {
             if (reorderB)
                 Reorder32fB16(K, B + j, ldb, bufB + K * j);
             for (int i = 0; i < M; i += 6)
-                Micro32f6x16(K, A + i * K, 1, 6, bufB + K * j, 16, C + i * ldc + j, ldc);
+                Micro32f6x16(K, A + i * K, 1, 6, bufB + K * j, 16, C + i * ldc + j, ldc, zero);
         }
     }
 
     void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 32 * 1024 * 1024;
         int mK = std::min(L1 / 4 / 16, K) / 4 * 4;
         int mM = std::min(L2 / 4 / mK, M) / 6 * 6;
         int mN = std::min(L3 / 4 / mK, N) / 16 * 16;
@@ -145,10 +121,8 @@ namespace Avx2
                 for (int i = 0; i < M; i += mM)
                 {
                     int dM = std::min(M, i + mM) - i;
-                    if (k == 0)
-                        InitC(dM, dN, C + i * N + j, N);
                     Reorder32fA6(A + i * K + k, K, dM, dK, bufA.p);
-                    Macro32f(dM, dN, dK, bufA.p, B + k * N + j, N, bufB.p, i == 0, C + i * N + j, N);
+                    Macro32f(dM, dN, dK, bufA.p, B + k * N + j, N, bufB.p, i == 0, C + i * N + j, N, k == 0);
                 }
             }
         }

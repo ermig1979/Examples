@@ -22,11 +22,6 @@ namespace Base
 namespace Avx2
 {
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
-
-	void Micro32f6x16(int K, const float* A, int lda, int step, const float* B, int ldb, float* C, int ldc);
-	void InitC(int M, int N, float* C, int ldc);
-	void Reorder32fB16(int K, const float* B, int ldb, float* _B);
-	void Reorder32fA6(const float* A, int lda, int M, int K, float* bufA);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -34,11 +29,15 @@ namespace Avx2
 namespace Avx512bw
 {
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
+}
 
-	void Micro32f12x32(int K, const float* A, int lda, int step, const float* B, int ldb, float* C, int ldc);
-	void InitC(int M, int N, float* C, int ldc);
-	void Reorder32fB32(int K, const float* B, int ldb, float* _B);
-	void Reorder32fA12(const float* A, int lda, int M, int K, float* bufA);
+//-------------------------------------------------------------------------------------------------
+
+namespace Amx
+{
+	void InitAmx();
+
+	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
 }
 
 //-------------------------------------------------------------------------------------------------

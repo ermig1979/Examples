@@ -11,8 +11,8 @@ void Test32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm
 
     Mat32f a(M, K), b(K, N), c0(M, N), c1(M, N);
     srand(0);
-    Init(a, -1.0, 1.0, 1);
-    Init(b, -1.0, 1.0, 1);
+    Init(a, -0.1, 0.1, 1);
+    Init(b, -0.1, 0.1, 1);
 
     Gemm32f(a, b, c0, control);
     double t = 0;
@@ -43,11 +43,17 @@ int main(int argc, char* argv[])
     if (argc > 2) N = K = atoi(argv[2]);
     if (argc > 3) K = atoi(argv[3]);
 
+    Amx::InitAmx();
+
     //TEST32F(M, N, K, Base::Gemm32f, Avx512bw::Gemm32f);
 
     TEST32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
 
     TEST32F(M, N, K, Avx512bw::Gemm32f, Avx512bw::Gemm32f);
+
+    //TEST32F(M, N, K, Base::Gemm16b, Avx512bw::Gemm32f);
+
+    TEST32F(M, N, K, Amx::Gemm32f, Avx512bw::Gemm32f);
 
     return 0;
 }

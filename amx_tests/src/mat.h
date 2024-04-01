@@ -7,7 +7,7 @@ template<class T> struct Mat
     T* p;
     int m, n;
 
-    Mat(int _m, int _n) : m(_m), n(_n), p((float*)_mm_malloc(_m * _n * sizeof(T), 64)) {}
+    Mat(int _m, int _n) : m(_m), n(_n), p((T*)_mm_malloc(_m * _n * sizeof(T), 64)) {}
     ~Mat() { _mm_free(p); }
     int Size() const { return m * n; }
 };
@@ -25,14 +25,14 @@ inline float Random(int order = 1)
     return val;
 }
 
-inline void Init(Mat32f & mat, float min, float max, size_t order = 1)
+inline void Init(Mat32f & mat, float min, float max, int order = 1)
 {
     float range = (max - min) / order;
     for (int i = 0, n = mat.Size(); i < n; ++i)
         mat.p[i] = Random(order) * range + min;
 }
 
-inline void Init(Mat16b & mat, float min, float max, size_t order = 1)
+inline void Init(Mat16b & mat, float min, float max, int order = 1)
 {
     float range = (max - min) / order;
     for (int i = 0, n = mat.Size(); i < n; ++i)
