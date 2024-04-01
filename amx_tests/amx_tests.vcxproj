@@ -13,9 +13,15 @@
   <ItemGroup>
     <ClInclude Include="./src/bf16.h" />
     <ClInclude Include="./src/defs.h" />
+    <ClInclude Include="src\diff.h" />
+    <ClInclude Include="src\gemm.h" />
+    <ClInclude Include="src\mat.h" />
+    <ClInclude Include="src\time.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="./src/main.cpp" />
+    <ClCompile Include="src\gemm_avx2.cpp" />
+    <ClCompile Include="src\gemm_v0.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>
