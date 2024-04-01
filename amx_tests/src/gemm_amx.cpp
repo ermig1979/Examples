@@ -142,7 +142,7 @@ namespace Amx
 
     void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 32 * 1024 * 1024;
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
@@ -162,6 +162,29 @@ namespace Amx
                 }
             }
         }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void StubMicro16b32x32(int M, int N, int K, const float* A, const float* B, float* C)
+    {
+        const int L1 = 48 * 1024;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        Mat32f a32f(32, mK), b32f(mK, 32);
+        srand(0);
+        Init(a32f, -0.1, 0.1, 1);
+        Init(b32f, -0.1, 0.1, 1);
+        Mat16b a16b(32, K), b16b(K, 32);
+
+        ConvertA(a32f, a16b);
+        ConvertA(b32f, b16b);
+        for (int i = 0; i < M; i += 32)
+            for (int j = 0; j < N; j += 32)
+                for (int k = 0; k < K; k += mK)
+                {
+                    int dK = std::min(mK, K - k);
+                    Micro16b32x32(dK, a16b.p, 32, b16b.p, C, 32, i == 0 && j == 0 && k == 0);
+                }
     }
 }
 

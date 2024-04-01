@@ -38,6 +38,8 @@ namespace Amx
 	void InitAmx();
 
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
+
+	void StubMicro16b32x32(int M, int N, int K, const float* A, const float* B, float* C);
 }
 
 //-------------------------------------------------------------------------------------------------
