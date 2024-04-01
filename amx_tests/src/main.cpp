@@ -4,7 +4,7 @@
 #include "time.h"
 #include "gemm.h"
 
-void Test32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, double time = 1.0)
+void Test32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time = 1.0)
 {
     std::cout << std::fixed << std::setprecision(1);
     std::cout << "TEST " << desc << " :" << std::endl;
@@ -14,7 +14,7 @@ void Test32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, doub
     Init(a, -1.0, 1.0, 1);
     Init(b, -1.0, 1.0, 1);
 
-    Gemm32f(a, b, c0, Base::Gemm32f);
+    Gemm32f(a, b, c0, control);
     double t = 0;
     int n = 0;
     while (t < time)
@@ -33,7 +33,7 @@ void Test32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, doub
     std::cout << std::endl;
 }
 
-#define TEST32F(M, N, K, gemm) Test32f(M, N, K, #gemm, gemm)
+#define TEST32F(M, N, K, gemm, control) Test32f(M, N, K, #gemm, gemm, control)
 
 int main(int argc, char* argv[])
 {
@@ -43,7 +43,11 @@ int main(int argc, char* argv[])
     if (argc > 2) N = K = atoi(argv[2]);
     if (argc > 3) K = atoi(argv[3]);
 
-    TEST32F(M, N, K, Avx2::Gemm32f);
+    //TEST32F(M, N, K, Base::Gemm32f, Avx512bw::Gemm32f);
+
+    TEST32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
+
+    TEST32F(M, N, K, Avx512bw::Gemm32f, Avx512bw::Gemm32f);
 
     return 0;
 }

@@ -1,5 +1,4 @@
 #include "gemm.h"
-#include "bf16.h"
 
 namespace Avx2
 {

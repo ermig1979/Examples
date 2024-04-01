@@ -21,7 +21,8 @@
   <ItemGroup>
     <ClCompile Include="./src/main.cpp" />
     <ClCompile Include="src\gemm_avx2.cpp" />
-    <ClCompile Include="src\gemm_v0.cpp" />
+    <ClCompile Include="src\gemm_avx512bw.cpp" />
+    <ClCompile Include="src\gemm_base.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>
