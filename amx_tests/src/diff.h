@@ -37,6 +37,11 @@ struct Stat
         ss << " }";
         return ss.str();
     }
+
+    double Abs() const
+    {
+        return std::max(abs(max), abs(min));
+    }
 };  
 
 struct Diff

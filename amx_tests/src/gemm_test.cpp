@@ -2,10 +2,16 @@
 #include "diff.h"
 #include "time.h"
 
-void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time)
+inline std::string ToStr(std::string value, int width)
 {
-    std::cout << std::fixed << std::setprecision(1);
-    std::cout << "TEST " << desc << " :" << std::endl;
+    std::stringstream ss;
+    ss << std::setfill(' ') << std::setw(width) << value;
+    return ss.str();
+}
+
+void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time = 1.0)
+{
+    std::cout << "Test " << desc << " : ";
 
     Mat32f a(M, K), b(K, N), c0(M, N), c1(M, N);
     srand(0);
@@ -14,24 +20,58 @@ void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, 
     Fill(c0);
     Fill(c1);
 
-    Gemm32f(a, b, c0, control);
+    control(a.m, b.n, a.n, a.p, b.p, c0.p);
     double t = 0;
     int n = 0;
     while (t < time)
     {
         double start = Time();
-        Gemm32f(a, b, c1, gemm);
+        gemm(a.m, b.n, a.n, a.p, b.p, c1.p);;
         t += Time() - start;
         n++;
     }
     double gflops = 2 * double(M * N) * K * n / t / (1024 * 1024 * 1024);
-    std::cout << desc << " : " << std::setprecision(3) << std::fixed << gflops << " GFLOPS; t = " << t / n * 1000.0f << " msec." << std::endl;
-
     Diff d;
     GetDiff(c0, c1, d);
-    std::cout << " Diff: " << d.d.Info(6) << std::endl;
-    std::cout << std::endl;
+    std::cout << std::setprecision(3) << std::fixed << gflops << " GFLOPS; e = " << d.d.Abs() << std::endl;
 }
+
+#define TEST_GEMM32F(M, N, K, gemm, control) TestGemm32f(M, N, K, ToStr(#gemm, 20), gemm, control)
+
+//-------------------------------------------------------------------------------------------------
+
+void TestGemm32f16b(int M, int N, int K, const std::string& desc, Gemm32f16bPtr gemm, Gemm32fPtr control, double time = 1.0)
+{
+    std::cout << "Test " << desc << " : ";
+
+    Mat32f a(M, K), b(K, N), c0(M, N), c1(M, N);
+    srand(0);
+    Init(a, -0.1, 0.1, 1);
+    Init(b, -0.1, 0.1, 1);
+    Fill(c0);
+    Fill(c1);
+    Mat16b _b(K, N);
+    Amx::ReorderB(N, K, b.p, _b.p);
+
+    control(a.m, b.n, a.n, a.p, b.p, c0.p);
+    double t = 0;
+    int n = 0;
+    while (t < time)
+    {
+        double start = Time();
+        gemm(a.m, b.n, a.n, a.p, _b.p, c1.p);;
+        t += Time() - start;
+        n++;
+    }
+    double gflops = 2 * double(M * N) * K * n / t / (1024 * 1024 * 1024);
+    Diff d;
+    GetDiff(c0, c1, d);
+    std::cout << std::setprecision(3) << std::fixed << gflops << " GFLOPS; e = " << d.d.Abs() << std::endl;
+}
+
+#define TEST_GEMM32F16B(M, N, K, gemm, control) TestGemm32f16b(M, N, K, ToStr(#gemm, 20), gemm, control)
+
+//-------------------------------------------------------------------------------------------------
 
 bool TestGemm(int M, int N, int K)
 {
@@ -44,6 +84,8 @@ bool TestGemm(int M, int N, int K)
     //TEST_GEMM32F(M, N, K, Base::Gemm16b, Avx512bw::Gemm32f);
 
     TEST_GEMM32F(M, N, K, Amx::Gemm32f, Avx512bw::Gemm32f);
+
+    TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16b, Avx512bw::Gemm32f);
 
     TEST_GEMM32F(M, N, K, Amx::StubMicro16b, Amx::StubMicro16b);
 

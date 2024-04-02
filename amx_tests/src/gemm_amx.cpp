@@ -110,7 +110,7 @@ namespace Amx
 
     void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
@@ -134,18 +134,71 @@ namespace Amx
 
     //-------------------------------------------------------------------------------------------------
 
+    void ReorderB(int mN, int mK, const float* src, int stride, uint16_t* dst)
+    {
+        for (int j = 0; j < mN; j += 32)
+            for (int k = 0; k < mK; k += 2)
+                ReorderB(src + k * stride + j, stride, dst + k * 32 + mK * j);
+    }
+
+    void ReorderB(int N, int K, const float* src, uint16_t* dst)
+    {
+        const int L1 = 48 * 1024, L3 = 2 * 1024 * 1024;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                ReorderB(dN, dK, src + k * N + j, N, dst);
+                dst += dN * dK;
+            }
+        }
+    }
+
+    void Macro16b(int M, int N, int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
+    {
+        for (int j = 0; j < N; j += 32)
+        {
+            for (int i = 0; i < M; i += 32)
+                Micro16b32x32(K, A + i * lda, lda, B + K * j, C + i * ldc + j, ldc, zero);
+        }
+    }
+
+    void Gemm32f16b(int M, int N, int K, const float* A, const uint16_t* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
+        int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
+        Mat16b bufA(mK, mM);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    ConvertA(A + i * K + k, K, dM, dK, bufA.p, mK);
+                    Macro16b(dM, dN, dK, bufA.p, mK, B, C + i * N + j, N, k == 0);
+                }
+                B += dN * dK;
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     void StubMicro16b(int M, int N, int K, const float* A, const float* B, float* C)
     {
         const int L1 = 48 * 1024 / 2;
-        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
-        Mat32f a32f(32, mK), b32f(mK, 32);
-        srand(0);
-        Init(a32f, -0.1, 0.1, 1);
-        Init(b32f, -0.1, 0.1, 1);
+        int mK = std::min(L1 / 2 / 32 / 2, K) / 32 * 32;
         Mat16b a16b(32, K), b16b(K, 32);
-
-        ConvertA(a32f, a16b);
-        ConvertA(b32f, b16b);
+        Fill(a16b), Fill(b16b);
         for (int i = 0; i < M; i += 32)
         {
             for (int j = 0; j < N; j += 32)
@@ -153,7 +206,7 @@ namespace Amx
                 for (int k = 0; k < K; k += mK)
                 {
                     int dK = std::min(mK, K - k);
-                    Micro16b32x32(dK, a16b.p, 32, b16b.p, C, 32, i == 0 && j == 0 && k == 0);
+                    Micro16b32x32(dK, a16b.p, mK, b16b.p, C, 32, i == 0 && j == 0 && k == 0);
                 }
             }
         }
@@ -161,18 +214,13 @@ namespace Amx
 
     void StubMacro16b(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
-        Mat32f a32f(mK, mM), b32f(mN, mK);
-        srand(0);
-        Init(a32f, -0.1, 0.1, 1);
-        Init(b32f, -0.1, 0.1, 1);
         Mat16b a16b(mK, mM), b16b(mN, mK);
+        Fill(a16b), Fill(b16b);
 
-        ConvertA(a32f, a16b);
-        ConvertA(b32f, b16b);
         for (int j = 0; j < N; j += mN)
         {
             int dN = std::min(N, j + mN) - j;
