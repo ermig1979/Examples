@@ -1,4 +1,5 @@
 #include "gemm.h"
+#include "amx.h"
 
 #if defined(__linux__)
 #include <unistd.h>
@@ -20,43 +21,10 @@ namespace Amx
 #endif
     }
 
-    struct TileConf
-    {
-        uint8_t paletteId;
-        uint8_t startRow;
-        uint8_t reserved[14];
-        uint16_t colsb[16];
-        uint8_t rows[16];
-
-        inline TileConf(uint8_t paletteId = 1, uint8_t startRow = 0)
-        {
-            uint64_t* dst = (uint64_t*)this;
-            for (size_t i = 0; i < 8; ++i)
-                dst[i] = 0;
-            this->paletteId = paletteId;
-            this->startRow = startRow;
-        }
-    };
-
     void Micro16b32x32(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
         TileConf conf;
-        conf.rows[0] = 16;
-        conf.rows[1] = 16;
-        conf.rows[2] = 16;
-        conf.rows[3] = 16;
-        conf.rows[4] = 16;
-        conf.rows[5] = 16;
-        conf.rows[6] = 16;
-        conf.rows[7] = 16;
-        conf.colsb[0] = 64;
-        conf.colsb[1] = 64;
-        conf.colsb[2] = 64;
-        conf.colsb[3] = 64;
-        conf.colsb[4] = 64;
-        conf.colsb[5] = 64;
-        conf.colsb[6] = 64;
-        conf.colsb[7] = 64;
+        conf.SetMax();
         _tile_loadconfig(&conf);
 
         if (zero)
@@ -166,9 +134,9 @@ namespace Amx
 
     //-------------------------------------------------------------------------------------------------
 
-    void StubMicro16b32x32(int M, int N, int K, const float* A, const float* B, float* C)
+    void StubMicro16b(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024;
+        const int L1 = 48 * 1024 / 2;
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         Mat32f a32f(32, mK), b32f(mK, 32);
         srand(0);
@@ -179,12 +147,45 @@ namespace Amx
         ConvertA(a32f, a16b);
         ConvertA(b32f, b16b);
         for (int i = 0; i < M; i += 32)
+        {
             for (int j = 0; j < N; j += 32)
+            {
                 for (int k = 0; k < K; k += mK)
                 {
                     int dK = std::min(mK, K - k);
                     Micro16b32x32(dK, a16b.p, 32, b16b.p, C, 32, i == 0 && j == 0 && k == 0);
                 }
+            }
+        }
+    }
+
+    void StubMacro16b(int M, int N, int K, const float* A, const float* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
+        int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
+        Mat32f a32f(mK, mM), b32f(mN, mK);
+        srand(0);
+        Init(a32f, -0.1, 0.1, 1);
+        Init(b32f, -0.1, 0.1, 1);
+        Mat16b a16b(mK, mM), b16b(mN, mK);
+
+        ConvertA(a32f, a16b);
+        ConvertA(b32f, b16b);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    Macro32f(dM, dN, dK, a16b.p, mK, B + k * N + j, N, b16b.p, 0, C, N, k == 0);
+                }
+            }
+        }
     }
 }
 

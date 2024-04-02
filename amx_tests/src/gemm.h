@@ -2,11 +2,6 @@
 
 #include "mat.h"
 
-//typedef void (*Gemm32fPtr)(const Mat32f& a, const Mat32f& b, Mat32f& c);
-//typedef void (*Gemm16bPtr)(const Mat16b& a, const Mat16b& b, Mat32f& c);
-//void Gemm32fV0(const Mat32f& a, const Mat32f& b, Mat32f& c);
-//void Gemm32fV1(const Mat32f& a, const Mat32f& b, Mat32f& c);
-
 typedef void (*Gemm32fPtr)(int M, int N, int K, const float* A, const float* B, float* C);
 
 //-------------------------------------------------------------------------------------------------
@@ -35,11 +30,10 @@ namespace Avx512bw
 
 namespace Amx
 {
-	void InitAmx();
-
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
 
-	void StubMicro16b32x32(int M, int N, int K, const float* A, const float* B, float* C);
+	void StubMicro16b(int M, int N, int K, const float* A, const float* B, float* C);
+	void StubMacro16b(int M, int N, int K, const float* A, const float* B, float* C);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -49,4 +43,10 @@ inline void Gemm32f(const Mat32f& a, const Mat32f& b, Mat32f& c, const Gemm32fPt
 	assert(a.m == c.m && a.n == b.m && b.n == c.n);
 	gemm(a.m, b.n, a.n, a.p, b.p, c.p);
 }
+
+void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time = 1.0);
+
+#define TEST_GEMM32F(M, N, K, gemm, control) TestGemm32f(M, N, K, #gemm, gemm, control)
+
+bool TestGemm(int M, int N, int K);
 

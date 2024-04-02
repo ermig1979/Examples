@@ -13,9 +13,16 @@ template<class T> struct Mat
 };
 
 typedef Mat<float> Mat32f;
+typedef Mat<int32_t> Mat32i;
 typedef Mat<uint16_t> Mat16b;
 
 //-------------------------------------------------------------------------------------------------
+
+template<class T> inline void Fill(Mat<T>& mat, T val = T(0))
+{
+    for (int i = 0, n = mat.Size(); i < n; ++i)
+        mat.p[i] = val;
+}
 
 inline float Random(int order = 1)
 {

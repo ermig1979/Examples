@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="./src/bf16.h" />
     <ClInclude Include="./src/defs.h" />
+    <ClInclude Include="src\amx.h" />
     <ClInclude Include="src\diff.h" />
     <ClInclude Include="src\gemm.h" />
     <ClInclude Include="src\mat.h" />
@@ -22,8 +23,10 @@
     <ClCompile Include="./src/main.cpp" />
     <ClCompile Include="src\gemm_amx.cpp" />
     <ClCompile Include="src\gemm_avx2.cpp" />
-    <ClCompile Include="src\gemm_avx512bw.cpp" />
+    <ClCompile Include="src\gemm_avx512.cpp" />
     <ClCompile Include="src\gemm_base.cpp" />
+    <ClCompile Include="src\gemm_test.cpp" />
+    <ClCompile Include="src\perf_amx.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>
