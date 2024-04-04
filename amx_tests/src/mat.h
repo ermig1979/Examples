@@ -62,10 +62,10 @@ template<class T> inline void Fill(Mat<T>& mat, T val = T(0))
 
 inline float Random(int order = 1)
 {
-    float val = 0;
+    float value = 0;
     for (int o = 0; o < order; ++o)
-        val += float(rand()) / float(RAND_MAX);
-    return val;
+        value += float(rand()) / float(RAND_MAX);
+    return value / float(order);
 }
 
 inline void Init(Mat32f & mat, float min, float max, int order = 1)

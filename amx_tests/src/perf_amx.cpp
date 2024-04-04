@@ -3,53 +3,27 @@
 
 namespace Amx
 {
-    static uint64_t PerfBf16L0_2x2(int count, int step, const float * src, float * dst)
+    static inline uint64_t PerfBf16L0(int count, int step)
     {
-        _tile_loadd(0, src + 0 * 256, 64);
-        _tile_loadd(1, src + 1 * 256, 64);
-        _tile_loadd(2, src + 2 * 256, 64);
-        _tile_loadd(3, src + 3 * 256, 64);
-        _tile_loadd(4, src + 4 * 256, 64);
-        _tile_loadd(5, src + 5 * 256, 64);
-        _tile_loadd(6, src + 6 * 256, 64);
-        _tile_loadd(7, src + 7 * 256, 64);
-
-        for(int i = 0, s = step * 2; i < count; i += s)
+        for(int i = 0; i < count; i += step)
         {
             _tile_dpbf16ps(0, 4, 6);
             _tile_dpbf16ps(1, 4, 7);
             _tile_dpbf16ps(2, 5, 6);
             _tile_dpbf16ps(3, 5, 7);
-
-            _tile_dpbf16ps(0, 4, 6);
-            _tile_dpbf16ps(1, 4, 7);
-            _tile_dpbf16ps(2, 5, 6);
-            _tile_dpbf16ps(3, 5, 7);
         }
-
-        _tile_stored(0, dst + 0 * 256, 64);
-        _tile_stored(1, dst + 1 * 256, 64);
-        _tile_stored(2, dst + 2 * 256, 64);
-        _tile_stored(3, dst + 3 * 256, 64);
-        _tile_stored(4, dst + 4 * 256, 64);
-        _tile_stored(5, dst + 5 * 256, 64);
-        _tile_stored(6, dst + 6 * 256, 64);
-        _tile_stored(7, dst + 7 * 256, 64);
-
-        return count * uint64_t(2 * 16 * 16) * 8;
+        return count * uint64_t(2 * 16 * 16) * 4;
     }
 
-    void TestPerfBf16L0_2x2(double time, int step = 16)
+    void TestPerfBf16L0(double time, int step)
     {
-        std::cout << "Test L0 AMX BF16 2x2x" << step * 2 << " performance: " << std::setprecision(3) << std::fixed;
-        Mat32f stub(8, 16 * 16);
-        Fill(stub);
+        std::cout << "Test L0 AMX BF16 16x16x" << step << " performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.colsb[4] = uint16_t(step * 4);
-        conf.colsb[5] = uint16_t(step * 4);
-        conf.rows[6] = uint8_t(step);
-        conf.rows[7] = uint8_t(step);
+        conf.colsb[4] = uint16_t(step * 2);
+        conf.colsb[5] = uint16_t(step * 2);
+        conf.rows[6] = uint8_t(step / 2);
+        conf.rows[7] = uint8_t(step / 2);
         _tile_loadconfig(&conf);
 
         double t = 0;
@@ -57,143 +31,31 @@ namespace Amx
         while (t < time)
         {
             double start = Time();
-            n += PerfBf16L0_2x2(2048, step, stub.p, stub.p);
+            n += PerfBf16L0(1024 * step, step);
             t += Time() - start;
         }
         double gflops = double(n) / t / double(1024 * 1024 * 1024);
-        double optime = t / n * 1000000000.0f * uint64_t(step * 1024);
-        std::cout << gflops << " GFLOPS; AMX BF16 optime: " << optime << " nsec." << std::endl;
-        if (stub.p[0])
-            std::cout << " ";
+        double optime = t / n * 1000000000.0f * uint64_t(step * 512);
+        std::cout << gflops << " GFLOPS; optime: " << optime << " nsec." << std::endl;
     }
 
     //-------------------------------------------------------------------------------------------------
 
-    static uint64_t PerfBf16L0_1x1(int count, const float* src, float* dst)
+    static inline uint64_t PerfInt8L0(int count)
     {
-        _tile_loadd(0, src + 0 * 256, 64);
-        _tile_loadd(1, src + 1 * 256, 64);
-        _tile_loadd(2, src + 2 * 256, 64);
-        _tile_loadd(3, src + 3 * 256, 64);
-        _tile_loadd(4, src + 4 * 256, 64);
-        _tile_loadd(5, src + 5 * 256, 64);
-        _tile_loadd(6, src + 6 * 256, 64);
-        _tile_loadd(7, src + 7 * 256, 64);
-
-        for (int i = 0; i < count; ++i)
-        {
-            _tile_dpbf16ps(0, 1, 5);
-            _tile_dpbf16ps(0, 2, 7);
-            _tile_dpbf16ps(0, 3, 6);
-            _tile_dpbf16ps(0, 4, 7);
-
-            _tile_dpbf16ps(0, 1, 5);
-            _tile_dpbf16ps(0, 2, 7);
-            _tile_dpbf16ps(0, 3, 6);
-            _tile_dpbf16ps(0, 4, 7);
-
-            _tile_dpbf16ps(0, 1, 5);
-            _tile_dpbf16ps(0, 2, 7);
-            _tile_dpbf16ps(0, 3, 6);
-            _tile_dpbf16ps(0, 4, 6);
-
-            _tile_dpbf16ps(0, 1, 5);
-            _tile_dpbf16ps(0, 2, 6);
-            _tile_dpbf16ps(0, 3, 7);
-            _tile_dpbf16ps(0, 4, 6);
-        }
-
-        _tile_stored(0, dst + 0 * 256, 64);
-        _tile_stored(1, dst + 1 * 256, 64);
-        _tile_stored(2, dst + 2 * 256, 64);
-        _tile_stored(3, dst + 3 * 256, 64);
-        _tile_stored(4, dst + 4 * 256, 64);
-        _tile_stored(5, dst + 5 * 256, 64);
-        _tile_stored(6, dst + 6 * 256, 64);
-        _tile_stored(7, dst + 7 * 256, 64);
-
-        return count * 16 * uint64_t(16 * 1024);
-    }
-
-    void TestPerfBf16L0_1x1(double time)
-    {
-        std::cout << "Test L0 AMX BF16 1x1 performance: " << std::setprecision(3) << std::fixed;
-        Mat32f stub(8, 16 * 16);
-        Fill(stub);
-
-        TileConf conf;
-        _tile_loadconfig(&conf);
-
-        double t = 0;
-        uint64_t n = 0;
-        while (t < time)
-        {
-            double start = Time();
-            n += PerfBf16L0_1x1(1024, stub.p, stub.p);
-            t += Time() - start;
-        }
-        double gflops = double(n) / t / double(1024 * 1024 * 1024);
-        double optime = t / n * 1000000000.0f * uint64_t(16 * 1024);
-        std::cout << gflops << " GFLOPS; AMX BF16 optime: " << optime << " nsec." << std::endl;
-        if (stub.p[0])
-            std::cout << " ";
-    }
-
-    //-------------------------------------------------------------------------------------------------
-
-    static uint64_t PerfInt8L0_2x2(int count, const int32_t* src, int32_t* dst)
-    {
-        _tile_loadd(0, src + 0 * 256, 64);
-        _tile_loadd(1, src + 1 * 256, 64);
-        _tile_loadd(2, src + 2 * 256, 64);
-        _tile_loadd(3, src + 3 * 256, 64);
-        _tile_loadd(4, src + 4 * 256, 64);
-        _tile_loadd(5, src + 5 * 256, 64);
-        _tile_loadd(6, src + 6 * 256, 64);
-        _tile_loadd(7, src + 7 * 256, 64);
-
-        for (int i = 0; i < count; ++i)
+        for (int i = 0; i < count; i += 4)
         {
             _tile_dpbuud(0, 4, 6);
             _tile_dpbuud(1, 4, 7);
             _tile_dpbuud(2, 5, 6);
             _tile_dpbuud(3, 5, 7);
-
-            _tile_dpbuud(0, 5, 6);
-            _tile_dpbuud(1, 5, 7);
-            _tile_dpbuud(2, 4, 6);
-            _tile_dpbuud(3, 4, 7);
-
-            _tile_dpbuud(0, 5, 7);
-            _tile_dpbuud(1, 4, 7);
-            _tile_dpbuud(2, 5, 6);
-            _tile_dpbuud(3, 4, 6);
-
-            _tile_dpbuud(0, 4, 7);
-            _tile_dpbuud(1, 5, 6);
-            _tile_dpbuud(2, 4, 7);
-            _tile_dpbuud(3, 5, 6);
         }
-
-        _tile_stored(0, dst + 0 * 256, 64);
-        _tile_stored(1, dst + 1 * 256, 64);
-        _tile_stored(2, dst + 2 * 256, 64);
-        _tile_stored(3, dst + 3 * 256, 64);
-        _tile_stored(4, dst + 4 * 256, 64);
-        _tile_stored(5, dst + 5 * 256, 64);
-        _tile_stored(6, dst + 6 * 256, 64);
-        _tile_stored(7, dst + 7 * 256, 64);
-
-        return count * 16 * uint64_t(32 * 1024);
+        return count * INT8_OPS;
     }
 
-    void TestPerfInt8L0_2x2(double time)
+    void TestPerfInt8L0(double time)
     {
-        std::cout << std::fixed << std::setprecision(1);
-        std::cout << "Test L0 AMX INT8 2x2 performance: ";
-
-        Mat32i stub(8, 16 * 16);
-        Fill(stub);
+        std::cout << "Test L0 AMX INT8 16x16x64 performance: " << std::fixed << std::setprecision(3);
 
         TileConf conf;
         _tile_loadconfig(&conf);
@@ -203,14 +65,12 @@ namespace Amx
         while (t < time)
         {
             double start = Time();
-            n += PerfInt8L0_2x2(1024, stub.p, stub.p);
+            n += PerfInt8L0(1024);
             t += Time() - start;
         }
         double gflops = double(n) / t / double(1024 * 1024 * 1024);
-        double optime = t / n * 1000000000.0f * uint64_t(32 * 1024);
-        std::cout << std::setprecision(3) << std::fixed << gflops << " GFLOPS; AMX INT8 optime: " << optime << " nsec." << std::endl;
-        if (stub.p[0])
-            std::cout << " ";
+        double optime = t / n * 1000000000.0f * INT8_OPS;
+        std::cout << gflops << " GFLOPS; optime: " << optime << " nsec." << std::endl;
     }
 
     //-------------------------------------------------------------------------------------------------
@@ -257,7 +117,7 @@ namespace Amx
         TileConf conf;
         _tile_loadconfig(&conf);
 
-        const int L1 = (48 - 8) * 1024;
+        const int L1 = (48 - 4) * 1024;
         const int K = L1 / 2 / 32 / 2;
 
         Mat16b a(32, K), b(K, 32);
@@ -801,18 +661,16 @@ namespace Amx
 
     void TestPerf(double time)
     {
-        TestPerfBf16L0_2x2(time, 16);
-        TestPerfBf16L0_2x2(time, 8);
-        //TestPerfBf16L0_2x2(time, 1);
-        TestPerfBf16L0_1x1(time);
-        TestPerfInt8L0_2x2(time);
+        TestPerfBf16L0(time, 32);
+        TestPerfBf16L0(time, 10);
+        TestPerfInt8L0(time);
 
         TestPerfBf16L1_2x2(time);
         TestPerfBf16L1_2x1(time);
         TestPerfBf16L1_1x2(time);
         TestPerfBf16L1_1x1(time);
 
-        //TestPerfBf16L2(time);
+        TestPerfBf16L2(time);
         
         TestPerfBf16L3_2x2(time);
         TestPerfBf16L3_2x1(time);

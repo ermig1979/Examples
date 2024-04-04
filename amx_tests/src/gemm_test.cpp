@@ -42,7 +42,7 @@ void TestGemm32f16b(int M, int N, int K, const std::string& desc, Gemm32f16bPtr 
     Fill(c0);
     Fill(c1);
     Mat16b _b(K, N);
-    Amx::ReorderB(N, K, microN, b.p, _b.p);
+    Amx::ConvertB(N, K, microN, b.p, _b.p);
 
     control(a.m, b.n, a.n, a.p, b.p, c0.p);
     double t = 0;
@@ -77,7 +77,7 @@ void TestGemm16b(int M, int N, int K, const std::string& desc, Gemm16bPtr gemm, 
     Mat16b _a(M, K);
     Amx::ConvertA(M, K, a.p, _a.p);
     Mat16b _b(K, N);
-    Amx::ReorderB(N, K, 32, b.p, _b.p);
+    Amx::ConvertB(N, K, 32, b.p, _b.p);
 
     control(a.m, b.n, a.n, a.p, b.p, c0.p);
     double t = 0;
@@ -103,7 +103,7 @@ bool TestGemm(int M, int N, int K)
 {
     //TEST_GEMM32F(M, N, K, Base::Gemm32f, Avx512bw::Gemm32f);
 
-    TEST_GEMM32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
+    //TEST_GEMM32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
 
     TEST_GEMM32F(M, N, K, Avx512bw::Gemm32f, Avx512bw::Gemm32f);
 
@@ -118,10 +118,6 @@ bool TestGemm(int M, int N, int K)
     TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV3, 16, Avx512bw::Gemm32f);
 
     TEST_GEMM16B(M, N, K, Amx::Gemm16b, Avx512bw::Gemm32f);
-
-    //TEST_GEMM32F(M, N, K, Amx::StubMicro16b, Amx::StubMicro16b);
-
-    //TEST_GEMM32F(M, N, K, Amx::StubMacro16b, Amx::StubMacro16b);
 
     return true;
 }
