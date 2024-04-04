@@ -1,44 +1,13 @@
-#include "gemm.h"
+#include "test.h"
+#include "mat.h"
 #include "amx.h"
-
-#if defined(__linux__)
-#include <unistd.h>
-#include <sys/syscall.h>
-
-#define ARCH_GET_XCOMP_PERM     0x1022
-#define ARCH_REQ_XCOMP_PERM     0x1023
-#define XFEATURE_XTILECFG       17
-#define XFEATURE_XTILEDATA      18
-#endif
 
 namespace Amx
 {
-    void InitAmx()
-    {
-#if defined(__linux__)
-        if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA) != 0)
-            std::cout << "Can't initialize AMX!" << std::endl;
-#endif
-    }
-
-    //-------------------------------------------------------------------------------------------------
-
-    inline int Min(int a, int b)
-    {
-        return a < b ? a : b;
-    }
-
-    inline int AlignLo(int value, int align)
-    {
-        return value / align * align;
-    }
-
-    //-------------------------------------------------------------------------------------------------
 
     void Micro16b16x16(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         if (zero)
@@ -52,16 +21,42 @@ namespace Amx
         for (size_t k = 0; k < K; k += 32)
         {
             _tile_stream_loadd(4, A + k, lda * 2);
-            _tile_loadd(6, B + k * 32 + 0, 64);
+            _tile_loadd(6, B + k * 16 + 0, 64);
             _tile_dpbf16ps(0, 4, 6);
         }
         _tile_stored(0, C + 0, ldc * 4);
     }
 
+    void Micro16b32x16(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
+    {
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        if (zero)
+        {
+            _tile_zero(0);
+            _tile_zero(2);
+        }
+        else
+        {
+            _tile_stream_loadd(0, C + 0, ldc * 4);
+            _tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
+        }
+        for (size_t k = 0; k < K; k += 32)
+        {
+            _tile_stream_loadd(4, A + k, lda * 2);
+            _tile_loadd(6, B + k * 16 + 0, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_stream_loadd(5, A + k + lda * 16, lda * 2);
+            _tile_dpbf16ps(2, 5, 6);
+        }
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+    }
+
     void Micro16b16x32(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         if (zero)
@@ -90,7 +85,6 @@ namespace Amx
     void Micro16b32x32(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         if (zero)
@@ -136,41 +130,29 @@ namespace Amx
         for (int i = 0; i < M; i += 1)
         {
             for (int k = 0; k < K; k += 32)
-                    ConvertA(A + k, bufA + k);
+                ConvertA(A + k, bufA + k);
             A += lda;
             bufA += bufS;
         }
     }
 
-    inline void ReorderBx1(const float* src, int stride, uint16_t* dst)
+    inline void ReorderB(const float* src, int stride, uint16_t* dst)
     {
-        static const __m512i P = _mm512_set_epi16(0x1f, 0x0f, 0x1e, 0x0e, 0x1d, 0x0d, 0x1c, 0x0c, 0x1b, 0x0b, 0x1a, 0x0a, 0x19, 0x09, 0x18, 0x08, 0x17, 0x07, 0x16, 0x06, 0x15, 0x05, 0x14, 0x04, 0x13, 0x03, 0x12, 0x02, 0x11, 0x01, 0x10, 0x00);
+        static const __m512i PERM_IDX = _mm512_set_epi16(
+            0x1f, 0x0f, 0x1e, 0x0e, 0x1d, 0x0d, 0x1c, 0x0c, 0x1b, 0x0b, 0x1a, 0x0a, 0x19, 0x09, 0x18, 0x08, 
+            0x17, 0x07, 0x16, 0x06, 0x15, 0x05, 0x14, 0x04, 0x13, 0x03, 0x12, 0x02, 0x11, 0x01, 0x10, 0x00);
         __m512 s0 = _mm512_loadu_ps(src + 0 * stride);
         __m512 s1 = _mm512_loadu_ps(src + 1 * stride);
         __m512i d = (__m512i)_mm512_cvtne2ps_pbh(s1, s0);
-        _mm512_storeu_si512(dst, _mm512_permutexvar_epi16(P, d));
-    }
-
-    inline void ReorderBx2(const float* src, int stride, uint16_t* dst)
-    {
-        static const __m512i P0 = _mm512_set_epi16(0x2f, 0x0f, 0x2e, 0x0e, 0x2d, 0x0d, 0x2c, 0x0c, 0x2b, 0x0b, 0x2a, 0x0a, 0x29, 0x09, 0x28, 0x08, 0x27, 0x07, 0x26, 0x06, 0x25, 0x05, 0x24, 0x04, 0x23, 0x03, 0x22, 0x02, 0x21, 0x01, 0x20, 0x00);
-        static const __m512i P1 = _mm512_set_epi16(0x3f, 0x1f, 0x3e, 0x1e, 0x3d, 0x1d, 0x3c, 0x1c, 0x3b, 0x1b, 0x3a, 0x1a, 0x39, 0x19, 0x38, 0x18, 0x37, 0x17, 0x36, 0x16, 0x35, 0x15, 0x34, 0x14, 0x33, 0x13, 0x32, 0x12, 0x31, 0x11, 0x30, 0x10);
-        __m512 s00 = _mm512_loadu_ps(src + 0 * stride);
-        __m512 s01 = _mm512_loadu_ps(src + 0 * stride + 16);
-        __m512i d0 = (__m512i)_mm512_cvtne2ps_pbh(s01, s00);
-        __m512 s10 = _mm512_loadu_ps(src + 1 * stride);
-        __m512 s11 = _mm512_loadu_ps(src + 1 * stride + 16);
-        __m512i d1 = (__m512i)_mm512_cvtne2ps_pbh(s11, s10);
-        _mm512_storeu_si512(dst + 0, _mm512_permutex2var_epi16(d0, P0, d1));
-        _mm512_storeu_si512(dst + 32, _mm512_permutex2var_epi16(d0, P1, d1));
+        _mm512_storeu_si512(dst, _mm512_permutexvar_epi16(PERM_IDX, d));
     }
 
     void ReorderB32(int K, const float* B, int ldb, uint16_t* bufB)
     {
         for (int k = 0; k < K; k += 2, B += 2 * ldb, bufB += 64)
         {
-            ReorderBx1(B + 0, ldb, bufB + 0);
-            ReorderBx1(B + 16, ldb, bufB + 32);
+            ReorderB(B + 0, ldb, bufB + 0);
+            ReorderB(B + 16, ldb, bufB + 32);
         }
     }
 
@@ -219,7 +201,7 @@ namespace Amx
             for (int k = 0; k < macroK; k += 2)
             {
                 for(int m = 0; m < microN; m += 16)
-                    ReorderBx1(src + k * stride + m, stride, dst + k * microN + macroK * j + m * 2);
+                    ReorderB(src + k * stride + m, stride, dst + k * microN + macroK * j + m * 2);
             }
             src += microN;
         }
@@ -302,6 +284,48 @@ namespace Amx
                         }
                     }
                     Macro16b(dM, dN, dK, bufA.p + k * M + i * mK, mK, B, C + i * N + j, N, k == 0);
+                }
+                B += dN * dK;
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void Macro16bV3(int M, int N, int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
+    {
+        for (int j = 0; j < N; j += 16)
+        {
+            for (int i = 0; i < M; i += 32)
+                Micro16b32x16(K, A + i * lda, lda, B + K * j, C + i * ldc + j, ldc, zero);
+        }
+    }
+
+    void Gemm32f16bV3(int M, int N, int K, const float* A, const uint16_t* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        int mK = AlignLo(Min(L1 / 2 / 16, K), 16);
+        int mM = AlignLo(Min(L2 / 2 / mK, M), 32);
+        int mN = AlignLo(Min(L3 / 2 / mK, N), 16);
+        Mat16b bufA(K, M);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    if (j == 0 && k == 0)
+                    {
+                        for (int k = 0; k < K; k += mK)
+                        {
+                            int dK = std::min(K, k + mK) - k;
+                            ConvertA(A + i * K + k, K, dM, dK, bufA.p + k * M + i * mK, mK);
+                        }
+                    }
+                    Macro16bV3(dM, dN, dK, bufA.p + k * M + i * mK, mK, B, C + i * N + j, N, k == 0);
                 }
                 B += dN * dK;
             }

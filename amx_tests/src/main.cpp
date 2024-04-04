@@ -1,8 +1,6 @@
 #include "mat.h"
-#include "diff.h"
-#include "time.h"
 #include "amx.h"
-#include "gemm.h"
+#include "test.h"
 
 int main(int argc, char* argv[])
 {
@@ -20,6 +18,8 @@ int main(int argc, char* argv[])
 
     Amx::InitAmx();
 
+    PrintCurrentFrequency();
+
     if (M && N && K)
     {
         if (!TestGemm(M, N, K))
@@ -27,6 +27,8 @@ int main(int argc, char* argv[])
     }
 
     Amx::TestPerf();
+
+    PrintCurrentFrequency();
 
     return 0;
 }

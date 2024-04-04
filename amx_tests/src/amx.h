@@ -4,7 +4,17 @@
 
 namespace Amx
 {
-    void InitAmx();
+    inline void InitAmx()
+    {
+#if defined(__linux__)
+        const int ARCH_GET_XCOMP_PERM = 0x1022;
+        const int ARCH_REQ_XCOMP_PERM = 0x1023;
+        const int XFEATURE_XTILECFG = 17;
+        const int XFEATURE_XTILEDATA = 18;
+        if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA) != 0)
+            std::cout << "Can't initialize AMX!" << std::endl;
+#endif
+    }
 
     //-------------------------------------------------------------------------------------------------
 
@@ -23,26 +33,11 @@ namespace Amx
                 dst[i] = 0;
             this->paletteId = paletteId;
             this->startRow = startRow;
-        }
-
-        inline void SetMax()
-        {
-            rows[0] = 16;
-            rows[1] = 16;
-            rows[2] = 16;
-            rows[3] = 16;
-            rows[4] = 16;
-            rows[5] = 16;
-            rows[6] = 16;
-            rows[7] = 16;
-            colsb[0] = 64;
-            colsb[1] = 64;
-            colsb[2] = 64;
-            colsb[3] = 64;
-            colsb[4] = 64;
-            colsb[5] = 64;
-            colsb[6] = 64;
-            colsb[7] = 64;
+            for (size_t i = 0; i < 8; ++i)
+            {
+                rows[i] = 16;
+                colsb[i] = 64;
+            }
         }
     };
 

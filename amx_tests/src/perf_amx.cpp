@@ -1,6 +1,4 @@
-#include "gemm.h"
-#include "diff.h"
-#include "time.h"
+#include "test.h"
 #include "amx.h"
 
 namespace Amx
@@ -22,6 +20,11 @@ namespace Amx
             _tile_dpbf16ps(1, 4, 7);
             _tile_dpbf16ps(2, 5, 6);
             _tile_dpbf16ps(3, 5, 7);
+
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
         }
 
         _tile_stored(0, dst + 0 * 256, 64);
@@ -33,7 +36,7 @@ namespace Amx
         _tile_stored(6, dst + 6 * 256, 64);
         _tile_stored(7, dst + 7 * 256, 64);
 
-        return count * uint64_t(2 * 32 * 32);
+        return count * uint64_t(2 * 16 * 16) * 8;
     }
 
     void TestPerfBf16L0_2x2(double time, int step = 16)
@@ -43,7 +46,6 @@ namespace Amx
         Fill(stub);
 
         TileConf conf;
-        conf.SetMax();
         conf.colsb[4] = uint16_t(step * 4);
         conf.colsb[5] = uint16_t(step * 4);
         conf.rows[6] = uint8_t(step);
@@ -85,7 +87,7 @@ namespace Amx
             _tile_dpbf16ps(0, 3, 6);
             _tile_dpbf16ps(0, 4, 7);
 
-            _tile_dpbf16ps(0, 1,5);
+            _tile_dpbf16ps(0, 1, 5);
             _tile_dpbf16ps(0, 2, 7);
             _tile_dpbf16ps(0, 3, 6);
             _tile_dpbf16ps(0, 4, 7);
@@ -120,7 +122,6 @@ namespace Amx
         Fill(stub);
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         double t = 0;
@@ -195,7 +196,6 @@ namespace Amx
         Fill(stub);
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         double t = 0;
@@ -255,10 +255,9 @@ namespace Amx
         std::cout << "Test L1 AMX BF16 2x2 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
-        const int L1 = (48 - 4) * 1024;
+        const int L1 = (48 - 8) * 1024;
         const int K = L1 / 2 / 32 / 2;
 
         Mat16b a(32, K), b(K, 32);
@@ -310,7 +309,6 @@ namespace Amx
         std::cout << "Test L1 AMX BF16 2x1 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024;
@@ -365,7 +363,6 @@ namespace Amx
         std::cout << "Test L1 AMX BF16 1x2 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024;
@@ -415,7 +412,6 @@ namespace Amx
         std::cout << "Test L1 AMX BF16 1x1 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = (48 - 4) * 1024;
@@ -487,7 +483,6 @@ namespace Amx
         std::cout << "Test L2 AMX BF16 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024;
@@ -563,7 +558,6 @@ namespace Amx
         std::cout << "Test L3 AMX BF16 2x2 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
@@ -631,7 +625,6 @@ namespace Amx
         std::cout << "Test L3 AMX BF16 2x1 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
@@ -700,7 +693,6 @@ namespace Amx
         std::cout << "Test L3 AMX BF16 1x2 performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
@@ -782,7 +774,6 @@ namespace Amx
         std::cout << "Test L3 AMX BF16 1x" << X << " performance: " << std::setprecision(3) << std::fixed;
 
         TileConf conf;
-        conf.SetMax();
         _tile_loadconfig(&conf);
 
         const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
@@ -812,7 +803,7 @@ namespace Amx
     {
         TestPerfBf16L0_2x2(time, 16);
         TestPerfBf16L0_2x2(time, 8);
-        TestPerfBf16L0_2x2(time, 1);
+        //TestPerfBf16L0_2x2(time, 1);
         TestPerfBf16L0_1x1(time);
         TestPerfInt8L0_2x2(time);
 
@@ -821,18 +812,18 @@ namespace Amx
         TestPerfBf16L1_1x2(time);
         TestPerfBf16L1_1x1(time);
 
-        TestPerfBf16L2(time);
+        //TestPerfBf16L2(time);
         
         TestPerfBf16L3_2x2(time);
         TestPerfBf16L3_2x1(time);
         TestPerfBf16L3_1x2(time);
 
-        TestPerfBf16L3_1xX<1>(time);
-        TestPerfBf16L3_1xX<2>(time);
-        TestPerfBf16L3_1xX<3>(time);
-        TestPerfBf16L3_1xX<4>(time);
-        TestPerfBf16L3_1xX<5>(time);
-        TestPerfBf16L3_1xX<6>(time);
+        //TestPerfBf16L3_1xX<1>(time);
+        //TestPerfBf16L3_1xX<2>(time);
+        //TestPerfBf16L3_1xX<3>(time);
+        //TestPerfBf16L3_1xX<4>(time);
+        //TestPerfBf16L3_1xX<5>(time);
+        //TestPerfBf16L3_1xX<6>(time);
     }
 }
 

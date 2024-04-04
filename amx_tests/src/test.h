@@ -37,6 +37,7 @@ namespace Amx
     void ReorderB(int N, int K, int microN, const float* src, uint16_t* dst);
     void Gemm32f16b(int M, int N, int K, const float* A, const uint16_t* B, float* C);
 	void Gemm32f16bV2(int M, int N, int K, const float* A, const uint16_t* B, float* C);
+	void Gemm32f16bV3(int M, int N, int K, const float* A, const uint16_t* B, float* C);
 
 	void ConvertA(int M, int K, const float* src, uint16_t* dst);
 	void ReorderA(int M, int K, const float* src, uint16_t* dst);
