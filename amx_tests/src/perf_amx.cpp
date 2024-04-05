@@ -72,6 +72,74 @@ namespace Amx
         double optime = t / n * 1000000000.0f * INT8_OPS;
         std::cout << gflops << " GFLOPS; optime: " << optime << " nsec." << std::endl;
     }
+    //-------------------------------------------------------------------------------------------------
+
+    template<int flags> inline uint64_t PerfBf16L1(int count, uint8_t* buf)
+    {
+        if (flags & 1)
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        if(flags & 2)
+        {
+            _tile_stream_loadd(0, buf + 0 * 1024, 64);
+            _tile_stream_loadd(1, buf + 1 * 1024, 64);
+            _tile_stream_loadd(2, buf + 2 * 1024, 64);
+            _tile_stream_loadd(3, buf + 3 * 1024, 64);
+        }
+        if (flags & 4)
+        {
+            _tile_loadd(0, buf + 0 * 1024, 64);
+            _tile_loadd(1, buf + 1 * 1024, 64);
+            _tile_loadd(2, buf + 2 * 1024, 64);
+            _tile_loadd(3, buf + 3 * 1024, 64);
+        }
+        for (int i = 0; i < count; i++)
+        {
+            _tile_loadd(4, buf + (4 * i + 0) * 1024, 64);
+            _tile_loadd(6, buf + (4 * i + 1) * 1024, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_loadd(7, buf + (4 * i + 2) * 1024, 64);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_loadd(5, buf + (4 * i + 3) * 1024, 64);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
+        }
+        if (flags & 8)
+        {
+            _tile_stored(0, buf + 0 * 1024, 64);
+            _tile_stored(1, buf + 1 * 1024, 64);
+            _tile_stored(2, buf + 2 * 1024, 64);
+            _tile_stored(3, buf + 3 * 1024, 64);
+        }
+
+        return uint64_t(count * BF16_OPS * 4);
+    }
+
+    template<int flags> void TestPerfBf16L1(int count, double time)
+    {
+        std::cout << "Test L1 AMX BF16 2x2 performance: " << std::setprecision(3) << std::fixed;
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        Mat8u buf(1024 * 16, 1024 * 16);
+        Fill(buf);
+
+        double t = 0;
+        uint64_t n = 0;
+        while (t < time)
+        {
+            double start = Time();
+            n += PerfBf16L1<flags>(count, buf.p);
+            t += Time() - start;
+        }
+        double gflops = double(n) / t / double(1024 * 1024 * 1024);
+        std::cout << gflops << " GFLOPS. flags = " << flags <<  " count =  " << count << std::endl;
+    }
+
 
     //-------------------------------------------------------------------------------------------------
 
@@ -86,10 +154,10 @@ namespace Amx
         }
         else
         {
-            _tile_stream_loadd(0, C + 0, ldc * 4);
-            _tile_stream_loadd(1, C + 16, ldc * 4);
-            _tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
-            _tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
+            //_tile_stream_loadd(0, C + 0, ldc * 4);
+            //_tile_stream_loadd(1, C + 16, ldc * 4);
+            //_tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
+            //_tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
         }
         for (size_t k = 0; k < K; k += 32)
         {
@@ -102,10 +170,10 @@ namespace Amx
             _tile_dpbf16ps(2, 5, 6);
             _tile_dpbf16ps(3, 5, 7);
         }
-        _tile_stored(0, C + 0, ldc * 4);
-        _tile_stored(1, C + 16, ldc * 4);
-        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
-        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+        //_tile_stored(0, C + 0, ldc * 4);
+        //_tile_stored(1, C + 16, ldc * 4);
+        //_tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+        //_tile_stored(3, C + 16 * ldc + 16, ldc * 4);
 
         return uint64_t(K * 2 * 32 * 32);
     }
@@ -117,7 +185,7 @@ namespace Amx
         TileConf conf;
         _tile_loadconfig(&conf);
 
-        const int L1 = (48 - 4) * 1024;
+        const int L1 = (48) * 1024;
         const int K = L1 / 2 / 32 / 2;
 
         Mat16b a(32, K), b(K, 32);
@@ -254,7 +322,7 @@ namespace Amx
         }
         else
         {
-            _tile_stream_loadd(0, C + 0, ldc * 4);
+            //_tile_stream_loadd(0, C + 0, ldc * 4);
         }
         for (size_t k = 0; k < K; k += 32)
         {
@@ -262,7 +330,7 @@ namespace Amx
             _tile_loadd(6, B + k * 16, 64);
             _tile_dpbf16ps(0, 4, 6);
         }
-        _tile_stored(0, C + 0, ldc * 4);
+        //_tile_stored(0, C + 0, ldc * 4);
 
         return uint64_t(K * 2 * 16 * 16);
     }
@@ -665,16 +733,34 @@ namespace Amx
         TestPerfBf16L0(time, 10);
         TestPerfInt8L0(time);
 
-        TestPerfBf16L1_2x2(time);
-        TestPerfBf16L1_2x1(time);
-        TestPerfBf16L1_1x2(time);
-        TestPerfBf16L1_1x1(time);
+        //for (int i = 5; i < 20; i += 1)
+        //    TestPerfBf16L1<4 | 8>(i, time);
 
-        TestPerfBf16L2(time);
-        
-        TestPerfBf16L3_2x2(time);
-        TestPerfBf16L3_2x1(time);
-        TestPerfBf16L3_1x2(time);
+        for (int i = 1; i < 100000; i *= 2)
+        {
+            TestPerfBf16L1<4 | 8>(i * 2, time);
+            TestPerfBf16L1<4 | 8>(i * 3, time);
+        }
+
+        //for (int i = 5; i < 20; i += 1)
+        //    TestPerfBf16L1<2 | 8>(i, time);
+
+        //for (int i = 5; i < 20; i += 1)
+        //    TestPerfBf16L1<1 | 8>(i, time);
+
+        //for (int i = 5; i < 20; i += 1)
+        //    TestPerfBf16L1<0>(i, time);
+
+        //TestPerfBf16L1_2x2(time);
+        //TestPerfBf16L1_2x1(time);
+        //TestPerfBf16L1_1x2(time);
+        //TestPerfBf16L1_1x1(time);
+
+        //TestPerfBf16L2(time);
+        //
+        //TestPerfBf16L3_2x2(time);
+        //TestPerfBf16L3_2x1(time);
+        //TestPerfBf16L3_1x2(time);
 
         //TestPerfBf16L3_1xX<1>(time);
         //TestPerfBf16L3_1xX<2>(time);

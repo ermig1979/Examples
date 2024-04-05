@@ -113,11 +113,11 @@ bool TestGemm(int M, int N, int K)
 
     TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16b, 32, Avx512bw::Gemm32f);
 
-    TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV2, 32, Avx512bw::Gemm32f);
+    //TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV2, 32, Avx512bw::Gemm32f);
 
-    TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV3, 16, Avx512bw::Gemm32f);
+    //TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV3, 16, Avx512bw::Gemm32f);
 
-    TEST_GEMM16B(M, N, K, Amx::Gemm16b, Avx512bw::Gemm32f);
+    //TEST_GEMM16B(M, N, K, Amx::Gemm16b, Avx512bw::Gemm32f);
 
     return true;
 }

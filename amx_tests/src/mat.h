@@ -15,6 +15,7 @@ template<class T> struct Mat
 typedef Mat<float> Mat32f;
 typedef Mat<int32_t> Mat32i;
 typedef Mat<uint16_t> Mat16b;
+typedef Mat<uint8_t> Mat8u;
 
 //-------------------------------------------------------------------------------------------------
 
