@@ -20,8 +20,9 @@
     <ClCompile Include="./src/main.cpp" />
     <ClCompile Include="src\gemm_amx.cpp" />
     <ClCompile Include="src\gemm_fp32.cpp" />
-    <ClCompile Include="src\gemm_test.cpp" />
-    <ClCompile Include="src\perf_amx.cpp" />
+    <ClCompile Include="src\test_gemm.cpp" />
+    <ClCompile Include="src\shorts.cpp" />
+    <ClCompile Include="src\test_amx.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2756641C-DC57-4B33-B012-BD30ECE544FD}</ProjectGuid>

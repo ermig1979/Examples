@@ -72,10 +72,12 @@ namespace Amx
         double optime = t / n * 1000000000.0f * INT8_OPS;
         std::cout << gflops << " GFLOPS; optime: " << optime << " nsec." << std::endl;
     }
+
     //-------------------------------------------------------------------------------------------------
 
     template<int flags> inline uint64_t PerfBf16L1(int count, uint8_t* buf)
     {
+        uint8_t* C = buf, * A0 = buf + 4 * 1024, * A1 = A0 + count * 1024, * B0 = A1 + count * 1024, * B1 = B0 + count * 1024;
         if (flags & 1)
         {
             _tile_zero(0);
@@ -85,35 +87,37 @@ namespace Amx
         }
         if(flags & 2)
         {
-            _tile_stream_loadd(0, buf + 0 * 1024, 64);
-            _tile_stream_loadd(1, buf + 1 * 1024, 64);
-            _tile_stream_loadd(2, buf + 2 * 1024, 64);
-            _tile_stream_loadd(3, buf + 3 * 1024, 64);
+            _tile_stream_loadd(0, C + 0 * 1024, 64);
+            _tile_stream_loadd(1, C + 1 * 1024, 64);
+            _tile_stream_loadd(2, C + 2 * 1024, 64);
+            _tile_stream_loadd(3, C + 3 * 1024, 64);
         }
         if (flags & 4)
         {
-            _tile_loadd(0, buf + 0 * 1024, 64);
-            _tile_loadd(1, buf + 1 * 1024, 64);
-            _tile_loadd(2, buf + 2 * 1024, 64);
-            _tile_loadd(3, buf + 3 * 1024, 64);
+            _tile_loadd(0, C + 0 * 1024, 64);
+            _tile_loadd(1, C + 1 * 1024, 64);
+            _tile_loadd(2, C + 2 * 1024, 64);
+            _tile_loadd(3, C + 3 * 1024, 64);
         }
         for (int i = 0; i < count; i++)
         {
-            _tile_loadd(4, buf + (4 * i + 0) * 1024, 64);
-            _tile_loadd(6, buf + (4 * i + 1) * 1024, 64);
+            _tile_loadd(4, A0 + i * 1024, 64);
+            _tile_loadd(5, A1 + i * 1024, 64);
+            //_tile_loadd(4, A0 + i * 64, count * 64);
+            _tile_loadd(6, B0 + i * 1024, 64);
+            _tile_loadd(7, B1 + i * 1024, 64);
             _tile_dpbf16ps(0, 4, 6);
-            _tile_loadd(7, buf + (4 * i + 2) * 1024, 64);
             _tile_dpbf16ps(1, 4, 7);
-            _tile_loadd(5, buf + (4 * i + 3) * 1024, 64);
+            //_tile_loadd(5, A1 + i * 64, count * 64);
             _tile_dpbf16ps(2, 5, 6);
             _tile_dpbf16ps(3, 5, 7);
         }
         if (flags & 8)
         {
-            _tile_stored(0, buf + 0 * 1024, 64);
-            _tile_stored(1, buf + 1 * 1024, 64);
-            _tile_stored(2, buf + 2 * 1024, 64);
-            _tile_stored(3, buf + 3 * 1024, 64);
+            _tile_stored(0, C + 0 * 1024, 64);
+            _tile_stored(1, C + 1 * 1024, 64);
+            _tile_stored(2, C + 2 * 1024, 64);
+            _tile_stored(3, C + 3 * 1024, 64);
         }
 
         return uint64_t(count * BF16_OPS * 4);
@@ -125,7 +129,7 @@ namespace Amx
         TileConf conf;
         _tile_loadconfig(&conf);
 
-        Mat8u buf(1024 * 16, 1024 * 16);
+        Mat8u buf(1024 * 32, 1024 * 32);
         Fill(buf);
 
         double t = 0;
@@ -137,9 +141,92 @@ namespace Amx
             t += Time() - start;
         }
         double gflops = double(n) / t / double(1024 * 1024 * 1024);
-        std::cout << gflops << " GFLOPS. flags = " << flags <<  " count =  " << count << std::endl;
+        std::cout << gflops << " GFLOPS. f=" << flags << "; ";
+        if (count * 4 >= 1024 * 1)
+            std::cout << double(count * 4) / 1024 << " MB" << std::endl;
+        else
+            std::cout << count * 4 << " kB" << std::endl;
     }
 
+    //-------------------------------------------------------------------------------------------------
+
+    template<int N> inline uint64_t LoadLongRows(int count, uint8_t* buf)
+    {
+        uint8_t* A0 = buf, * A1 = A0 + count * 1024, * A2 = A1 + count * 1024, *A3 = A2 + count * 1024;
+        for (int i = 0; i < count; i++)
+        {
+            if (N > 0) { _tile_loadd(0, A0 + i * 64, 64 * count); };
+            if (N > 1) { _tile_loadd(1, A1 + i * 64, 64 * count); };
+            if (N > 2) { _tile_loadd(2, A2 + i * 64, 64 * count); };
+            if (N > 3) { _tile_loadd(3, A3 + i * 64, 64 * count); };
+        }
+        return uint64_t(count * 1024 * N);
+    }
+
+    template<int N> void TestLoadLongRows(int count, double time)
+    {
+        std::cout << "Test AMX loading (long rows): " << std::setprecision(3) << std::fixed;
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        Mat8u buf(1024, count * N);
+        Fill(buf);
+
+        double t = 0;
+        uint64_t n = 0;
+        while (t < time)
+        {
+            double start = Time();
+            n += LoadLongRows<N>(count, buf.p);
+            t += Time() - start;
+        }
+        double gbps = double(n) / t / double(1024 * 1024 * 1024);
+        std::cout << gbps << " GB/S. size =  ";
+        if (count * N >= 1024 * 1)
+            std::cout << double(count * N) / 1024 << " MB" << std::endl;
+        else
+            std::cout << count * N << " kB" << std::endl;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    template<int N> inline uint64_t LoadCompact(int count, uint8_t* buf)
+    {
+        uint8_t* A0 = buf, * A1 = A0 + count * 1024, * A2 = A1 + count * 1024, * A3 = A2 + count * 1024;
+        for (int i = 0; i < count; i++)
+        {
+            if (N > 0) { _tile_loadd(0, A0 + i * 1024, 64); };
+            if (N > 1) { _tile_loadd(1, A1 + i * 1024, 64); };
+            if (N > 2) { _tile_loadd(2, A2 + i * 1024, 64); };
+            if (N > 3) { _tile_loadd(3, A3 + i * 1024, 64); };
+        }
+        return uint64_t(count * 1024 * N);
+    }
+
+    template<int N> void TestLoadCompact(int count, double time)
+    {
+        std::cout << "Test AMX loading (compact): " << std::setprecision(3) << std::fixed;
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        Mat8u buf(1024, count * N);
+        Fill(buf);
+
+        double t = 0;
+        uint64_t n = 0;
+        while (t < time)
+        {
+            double start = Time();
+            n += LoadCompact<N>(count, buf.p);
+            t += Time() - start;
+        }
+        double gbps = double(n) / t / double(1024 * 1024 * 1024);
+        std::cout << gbps << " GB/S. size =  ";
+        if (count * N >= 1024 * 1)
+            std::cout << double(count * N) / 1024 << " MB" << std::endl;
+        else
+            std::cout << count * N << " kB" << std::endl;
+    }
 
     //-------------------------------------------------------------------------------------------------
 
@@ -426,7 +513,7 @@ namespace Amx
         while (t < time)
         {
             double start = Time();
-            n += PerfMacroBf16L2(M, K, a.p, K, b.p, c.p, 32, n == 0 ? 1 : 0);
+            n += PerfMacroBf16L2(M, K, a.p, K, b.p, c.p, 32, 1);
             t += Time() - start;
         }
         double gflops = double(n) / t / double(1024 * 1024 * 1024);
@@ -435,8 +522,114 @@ namespace Amx
 
     //-------------------------------------------------------------------------------------------------
 
+    inline uint64_t PerfMicroBf16L3(int K, const uint16_t* A0, const uint16_t* A1, const uint16_t* B0, const uint16_t* B1, float* C, int ldc, int zero)
+    {
+        if (zero)
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        else
+        {
+            _tile_stream_loadd(0, C + 0, ldc * 4);
+            _tile_stream_loadd(1, C + 16, ldc * 4);
+            _tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
+            _tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
+        }
+#if 0
+        _tile_stream_loadd(4, A0, 64);
+        _tile_loadd(6, B0, 64);
+        int k = 0, KB = K  - 32;
+        for (; k < KB; k += 32)
+        {
+            _tile_loadd(7, B1 + k * 16, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_stream_loadd(5, A1 + k * 16, 64);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_stream_loadd(4, A0 + k * 16 + 1024, 64);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_loadd(6, B0 + k * 16 + 1024, 64);
+            _tile_dpbf16ps(3, 5, 7);
+        }
+        _tile_loadd(7, B1 + k * 16, 64);
+        _tile_dpbf16ps(0, 4, 6);
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stream_loadd(5, A1 + k * 16, 64);
+        _tile_dpbf16ps(1, 4, 7);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_dpbf16ps(2, 5, 6);
+        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+        _tile_dpbf16ps(3, 5, 7);
+        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+#endif
+        for (int k = 0; k < K; k += 32)
+        {
+            _tile_stream_loadd(4, A0 + k * 16, 64);
+            _tile_loadd(6, B0 + k * 16, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_loadd(7, B1 + k * 16, 64);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_stream_loadd(5, A1 + k * 16, 64);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
+        }
+
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+
+
+        return uint64_t(K * 2 * 32 * 32);
+    }
+
+    inline uint64_t PerfMacroBf16L3(int M, int N, int K, const uint16_t* A0, const uint16_t* B0, float* C, int ldc, int zero)
+    {
+        const uint16_t* A1 = A0 + 16 * K, * B1 = B0 + K * 16;
+        uint64_t n = 0;
+        for (int j = 0; j < N; j += 32)
+        {
+            for (int i = 0; i < M; i += 32)
+                n += PerfMicroBf16L3(K, A0 + i * K, A1 + i * K, B0 + K * j, B1 + K * j, C + i * ldc + j, ldc, zero);
+        }
+        return n;
+    }
+
+    void TestPerfBf16L3(double time, int K)
+    {
+        std::cout << "Test L3 AMX BF16 performance: " << std::setprecision(3) << std::fixed << std::flush;
+
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        const int L1 = 48 * 1024, L2 = int(1 * 1024 * 1024), L3 = 1 * 1024 * 1024;
+        //const int K = L1 / 2 / 32;
+        const int M = L2 / 2 / K / 32 * 32;
+        const int N = L3 / 2 / K / 32 * 32;
+
+        Mat16b a(M, K), b(K, N);
+        Mat32f c(M, N);
+        Fill(a); Fill(b); Fill(c);
+
+        double t = 0;
+        uint64_t n = 0;
+        while (t < time)
+        {
+            double start = Time();
+            n += PerfMacroBf16L3(M, N, K, a.p, b.p, c.p, N, 1);
+            t += Time() - start;
+        }
+        double gflops = double(n) / t / double(1024 * 1024 * 1024);
+        std::cout << gflops << " GFLOPS. K = " << K << std::endl;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     inline uint64_t PerfMicroBf16L3_2x2(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
+        //_mm_prefetch((const char*)A, _MM_HINT_T1);
         if (zero)
         {
             _tile_zero(0);
@@ -488,9 +681,9 @@ namespace Amx
         TileConf conf;
         _tile_loadconfig(&conf);
 
-        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = 48 * 1024 * 1, L2 = 1 * 1024 * 1024, L3 = 1 * 1024 * 1024;
         const int K = L1 / 2 / 32;
-        const int M = L2 / 2 / K / 2 / 32 * 32;
+        const int M = L2 / 2 / K / 32 * 32;
         const int N = L3 / 2 / K / 32 * 32;
 
         Mat16b a(M, K), b(K, N);
@@ -502,7 +695,7 @@ namespace Amx
         while (t < time)
         {
             double start = Time();
-            n += PerfMacroBf16L3_2x2(M, N, K, a.p, K, b.p, c.p, N, n == 0 ? 1 : 0);
+            n += PerfMacroBf16L3_2x2(M, N, K, a.p, K, b.p, c.p, N, 1);
             t += Time() - start;
         }
         double gflops = double(n) / t / double(1024 * 1024 * 1024);
@@ -733,32 +926,56 @@ namespace Amx
         TestPerfBf16L0(time, 10);
         TestPerfInt8L0(time);
 
-        //for (int i = 5; i < 20; i += 1)
-        //    TestPerfBf16L1<4 | 8>(i, time);
+        //for (int i = 1; i < 20000; i *= 2)
+        //{
+        //    TestLoadLongRows<2>(i * 4, time);
+        //    TestLoadLongRows<2>(i * 5, time);
+        //    TestLoadLongRows<2>(i * 6, time);
+        //    TestLoadLongRows<2>(i * 7, time);
+        //}
 
-        for (int i = 1; i < 100000; i *= 2)
+        //for (int i = 1; i < 20000; i *= 2)
+        //{
+        //    TestLoadCompact<2>(i * 4, time);
+        //    TestLoadCompact<2>(i * 5, time);
+        //    TestLoadCompact<2>(i * 6, time);
+        //    TestLoadCompact<2>(i * 7, time);
+        //}
+
+        for (int i = 4; i < 30000; i *= 2)
         {
-            TestPerfBf16L1<4 | 8>(i * 2, time);
-            TestPerfBf16L1<4 | 8>(i * 3, time);
+            TestPerfBf16L1<0 | 0>(i * 2, time);
+            TestPerfBf16L1<0 | 0>(i * 3, time);
         }
 
-        //for (int i = 5; i < 20; i += 1)
-        //    TestPerfBf16L1<2 | 8>(i, time);
+        for (int i = 4; i < 30000; i *= 2)
+        {
+            TestPerfBf16L1<1 | 8>(i * 2, time);
+            TestPerfBf16L1<1 | 8>(i * 3, time);
+        }
 
-        //for (int i = 5; i < 20; i += 1)
-        //    TestPerfBf16L1<1 | 8>(i, time);
+        for (int i = 4; i < 30000; i *= 2)
+        {
+            TestPerfBf16L1<2 | 8>(i * 2, time);
+            TestPerfBf16L1<2 | 8>(i * 3, time);
+        }
 
-        //for (int i = 5; i < 20; i += 1)
-        //    TestPerfBf16L1<0>(i, time);
-
-        //TestPerfBf16L1_2x2(time);
+        TestPerfBf16L1_2x2(time);
         //TestPerfBf16L1_2x1(time);
         //TestPerfBf16L1_1x2(time);
         //TestPerfBf16L1_1x1(time);
 
         //TestPerfBf16L2(time);
-        //
-        //TestPerfBf16L3_2x2(time);
+
+        //for (int k = 32; k <= 4 * 1024; k *= 2)
+        //{
+        //    TestPerfBf16L3(time, k * 4);
+        //    TestPerfBf16L3(time, k * 5);
+        //    TestPerfBf16L3(time, k * 6);
+        //    TestPerfBf16L3(time, k * 7);
+        //}
+        
+        TestPerfBf16L3_2x2(time);
         //TestPerfBf16L3_2x1(time);
         //TestPerfBf16L3_1x2(time);
 

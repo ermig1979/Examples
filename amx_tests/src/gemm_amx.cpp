@@ -164,7 +164,7 @@ namespace Amx
 
     void Gemm32f16bV2(int M, int N, int K, const float* A, const uint16_t* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = Cache(1), L2 = Cache(2), L3 = Cache(3);
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
@@ -234,7 +234,7 @@ namespace Amx
 
     void Gemm32f16bV3(int M, int N, int K, const float* A, const uint16_t* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = Cache(1), L2 = Cache(2), L3 = Cache(3);
         int mK = AlignLo(Min(L1 / 2 / 16, K), 16);
         int mM = AlignLo(Min(L2 / 2 / mK, M), 32);
         int mN = AlignLo(Min(L3 / 2 / mK, N), 16);
@@ -289,7 +289,7 @@ namespace Amx
 
     void Gemm16b(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = Cache(1), L2 = Cache(2), L3 = Cache(3);
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
@@ -323,7 +323,7 @@ namespace Amx
 
     void StubMicro16b(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024 / 2;
+        const int L1 = Cache(1);
         int mK = std::min(L1 / 2 / 32 / 2, K) / 32 * 32;
         Mat16b a16b(32, K), b16b(K, 32);
         Fill(a16b), Fill(b16b);
@@ -342,7 +342,7 @@ namespace Amx
 
     void StubMacro16b(int M, int N, int K, const float* A, const float* B, float* C)
     {
-        const int L1 = 48 * 1024, L2 = 1 * 1024 * 1024, L3 = 2 * 1024 * 1024;
+        const int L1 = Cache(1), L2 = Cache(2), L3 = Cache(3);
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;

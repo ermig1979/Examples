@@ -62,8 +62,8 @@ inline size_t Cache(int level)
     switch (level)
     {
     case 1: return 48 * 1024;
-    case 2: return 2 * 1024 * 1024;
-    case 3: return 2 * 1024 * 1024;
+    case 2: return 1 * 1024 * 1024;
+    case 3: return 1 * 1024 * 1024;
     default:
         return 0;
     }
