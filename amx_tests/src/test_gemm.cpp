@@ -1,6 +1,6 @@
 #include "test.h"
 
-void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time = 1.0)
+void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, Gemm32fPtr control, double time = 1.000000000001)
 {
     std::cout << "Test " << desc << " : ";
 
@@ -25,6 +25,20 @@ void TestGemm32f(int M, int N, int K, const std::string& desc, Gemm32fPtr gemm, 
     Diff d;
     GetDiff(c0, c1, d);
     std::cout << std::setprecision(3) << std::fixed << gflops << " GFLOPS; e = " << d.d.Abs() << std::endl;
+    if (d.d.Abs() > 0.01)
+    {
+        for (size_t i = 0; i < M; ++i)
+        {
+            for (size_t j = 0; j < N; ++j)
+            {
+                if (abs(c0.p[i * N + j] - c1.p[i * N + j]) > 0.01)
+                {
+                    std::cout << "At [" << i << "][" << j << "] : " << c0.p[i * N + j] << " != " << c1.p[i * N + j] << std::endl;
+                    return;
+                }
+            }
+        }
+    }
 }
 
 #define TEST_GEMM32F(M, N, K, gemm, control) TestGemm32f(M, N, K, ToStr(#gemm, 20), gemm, control)
@@ -105,11 +119,13 @@ bool TestGemm(int M, int N, int K)
 
     //TEST_GEMM32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
 
-    TEST_GEMM32F(M, N, K, Avx512bw::Gemm32f, Avx512bw::Gemm32f);
+    TEST_GEMM32F(M, N, K, Avx512bw::Gemm32f, Amx::GemmFunc);
 
     //TEST_GEMM32F(M, N, K, Base::Gemm16b, Avx512bw::Gemm32f);
 
     TEST_GEMM32F(M, N, K, Amx::Gemm32f, Avx512bw::Gemm32f);
+
+    TEST_GEMM32F(M, N, K, Amx::GemmFunc, Avx512bw::Gemm32f);
 
     TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16b, 32, Avx512bw::Gemm32f);
 

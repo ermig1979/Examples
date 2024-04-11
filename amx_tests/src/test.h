@@ -34,6 +34,8 @@ namespace Amx
 {
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
 
+	void GemmFunc(int M, int N, int K, const float* A, const float* B, float* C);
+
     void ConvertB(int N, int K, int microN, const float* src, uint16_t* dst);
     void Gemm32f16b(int M, int N, int K, const float* A, const uint16_t* B, float* C);
 	void Gemm32f16bV2(int M, int N, int K, const float* A, const uint16_t* B, float* C);
@@ -47,4 +49,5 @@ namespace Amx
 //-------------------------------------------------------------------------------------------------
 
 bool TestGemm(int M, int N, int K);
+
 

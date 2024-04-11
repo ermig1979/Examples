@@ -97,6 +97,142 @@ namespace Amx
 
     //-------------------------------------------------------------------------------------------------
 
+    inline void MoveToMemory(const float* ptr, size_t stride, size_t count)
+    {
+        for (int i = 0; i < count; ++i)
+            _mm_prefetch((const char*)(ptr + i * stride), _MM_HINT_NTA);
+    }
+
+    void GemmMicro(int K, const uint16_t* A0, const uint16_t* A1,
+        const uint16_t* B0, const uint16_t* B1,
+        float* C, int ldc, bool update)
+    {
+        if (update)
+        {
+            _tile_stream_loadd(0, C, ldc * 4);
+            _tile_stream_loadd(1, C +  16, ldc * 4);
+            _tile_stream_loadd(2, C + 16 * ldc, ldc * 4);
+            _tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
+        }
+        else
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        for (int k = 0; k < K; k += 32)
+        {
+            _tile_stream_loadd(4, A0 + k * 16, 64);
+            _tile_stream_loadd(5, A1 + k * 16, 64);
+            _tile_loadd(6, B0 + k * 16, 64);
+            _tile_loadd(7, B1 + k * 16, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
+        }
+        _tile_stored(0, C, ldc * 4);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_stored(2, C + 16 * ldc, ldc * 4);
+        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+        //MoveToMemory(C + 0, ldc, 16);
+        //MoveToMemory(C + 16, ldc, 16);
+        //MoveToMemory(C + 16 * ldc, ldc, 16);
+        //MoveToMemory(C + 16 * ldc + 16, ldc, 16);
+    }
+
+    inline void MoveToL2Cache(const uint16_t* ptr, size_t count)
+    {
+        for (int i = 0; i < count; ++i)
+            _mm_prefetch((const char*)(ptr + i * 32), _MM_HINT_T1);
+    }
+
+    inline void MoveToL3Cache(const uint16_t* ptr, size_t count)
+    {
+        for (int i = 0; i < count; ++i)
+            _mm_prefetch((const char*)(ptr + i * 32), _MM_HINT_T2);
+    }
+
+    void ConvertA(int K, const float* A, int lda, uint16_t* buf)
+    {
+        for (int k = 0; k < K; k += 32, A += 32)
+            for (int i = 0; i < 16; ++i, buf += 32)
+                ConvertA(A + i * lda, buf);
+    }
+
+    void ConvertB_v2(int K, const float* B, int ldb, uint16_t* buf)
+    {
+        for (int k = 0; k < K; k += 2, B += 2 * ldb, buf += 32)
+            ConvertB(B, ldb, buf);
+    }
+
+    void GemmMacro(int M, int N, int K,
+        const float* A, int lda, uint16_t* bufA,
+        const float* B, int ldb, uint16_t* bufB,
+        int convertB, float* C, int ldc, bool update)
+    {
+        uint64_t n = 0;
+        for (int j = 0; j < N; j += 32)
+        {
+            uint16_t* B0 = bufB + j * K;
+            uint16_t* B1 = bufB + (j + 16) * K;
+            if (convertB)
+            {
+                ConvertB_v2(K, B + j + 0, ldb, B0);
+                ConvertB_v2(K, B + j + 16, ldb, B1);
+            }
+            else
+            {
+                //MoveToL2Cache(B0 + K * 32, K);
+                //MoveToL2Cache(B1 + K * 32, K);
+            }
+            for (int i = 0; i < M; i += 32)
+            {
+                uint16_t* A0 = bufA + i * K;
+                uint16_t* A1 = bufA + (i + 16) * K;
+                if (j == 0)
+                {
+                    ConvertA(K, A + i * lda, lda, A0);
+                    ConvertA(K, A + (i + 16) * lda, lda, A1);
+                }
+                GemmMicro(K, A0, A1, B0, B1, C + i * ldc + j, ldc, update);
+            }
+            //MoveToL3Cache(B0, K);
+            //MoveToL3Cache(B1, K);
+        }
+    }
+
+    void GemmFunc(int M, int N, int K, const float* A, const float* B, float* C)
+    {
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024, L3 = 45 * 1024 * 1024;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mM = std::min(int(L2 * 0.5) / 2 / mK, M) / 32 * 32;
+        int mN = std::min(int(L3 * 0.1) / 2 / mK, N) / 32 * 32;
+        std::vector<uint16_t> bufA(mK * mM), bufB(mN * mK);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    GemmMacro(dM, dN, dK,
+                        A + i * K + k, K, bufA.data(),
+                        B + k * N + j, N, bufB.data(), i == 0,
+                        C + i * N + j, N, k != 0);
+                }
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     void ConvertB(int macroN, int macroK, int microN, const float* src, int stride, uint16_t* dst)
     {
         for (int j = 0; j < macroN; j += microN)

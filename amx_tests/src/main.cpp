@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 
     Amx::InitAmx();
 
-    PrintCurrentFrequency();
+    Amx::WarmUpCpu();
 
     if (M && N && K)
     {
@@ -27,8 +27,6 @@ int main(int argc, char* argv[])
     }
 
     Amx::TestPerf();
-
-    PrintCurrentFrequency();
 
     return 0;
 }

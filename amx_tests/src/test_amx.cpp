@@ -704,6 +704,118 @@ namespace Amx
 
     //-------------------------------------------------------------------------------------------------
 
+    inline uint64_t PerfMicroBf16L3_2x2_v2(int K, const uint16_t* A0, const uint16_t* A1, const uint16_t* B0, const uint16_t* B1, float* C, int ldc, bool update)
+    {
+        if (update)
+        {
+            _tile_stream_loadd(0, C + 0, ldc * 4);
+            _tile_stream_loadd(1, C + 16, ldc * 4);
+            _tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
+            _tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
+        }
+        else
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        for (size_t k = 0; k < K; k += 32)
+        {
+            _tile_stream_loadd(4, A0 + k * 16, 64);
+            _tile_loadd(6, B0 + k * 16, 64);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_loadd(7, B1 + k * 16, 64);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_stream_loadd(5, A1 + k * 16, 64);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
+        }
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+        for (int i = 0; i < 32; ++i)
+        {
+            _mm_prefetch((const char*)(C + 00 + i * ldc), _MM_HINT_T2);
+            _mm_prefetch((const char*)(C + 16 + i * ldc), _MM_HINT_T2);
+        }
+
+        return uint64_t(K * 2 * 32 * 32);
+    }
+
+    inline void PrefetchToL2(const uint16_t* ptr, size_t size)
+    {
+        for (int i = 0; i < size; i += 4, ptr += 128)
+        {
+            _mm_prefetch((const char*)(ptr + 0 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 1 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 2 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 3 * 32), _MM_HINT_T1);
+        }
+    }
+
+    inline void PrefetchToL3(const uint16_t* ptr, size_t size)
+    {
+        for (int i = 0; i < size; i += 4, ptr += 128)
+        {
+            _mm_prefetch((const char*)(ptr + 0 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 1 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 2 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 3 * 32), _MM_HINT_T2);
+        }
+    }
+
+    inline void PrefetchToMemory(const uint16_t* ptr, size_t size)
+    {
+        for (int i = 0; i < size; ++i)
+            _mm_prefetch((const char*)(ptr + i * 32), _MM_HINT_NTA);
+    }
+
+    inline uint64_t PerfMacroBf16L3_2x2_v2(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C, int ldc, bool update)
+    {
+        uint64_t n = 0;
+        for (int j = 0; j < N; j += 32)
+        {
+            const uint16_t* B0 = B + j * K, *B1 = B + (j + 16) * K;
+            PrefetchToL2(B0 + K * 32, K);
+            PrefetchToL2(B1 + K * 32, K);
+            for (int i = 0; i < M; i += 32)
+                n += PerfMicroBf16L3_2x2_v2(K, A + i * K, A + (i + 16) * K, B0, B1, C + i * ldc + j, ldc, update);
+            PrefetchToL3(B0, K);
+            PrefetchToL3(B1, K);
+        }
+        return n;
+    }
+
+    void TestPerfBf16L3_2x2_v2(double time, int M, int N)
+    {
+        std::cout << "Test L3 AMX BF16 2x2 performance: " << std::setprecision(3) << std::fixed;
+
+        TileConf conf;
+        _tile_loadconfig(&conf);
+
+        const int L1 = 48 * 1024;
+        const int K = L1 / 2 / 32;
+
+        Mat16b a(M, K), b(K, N);
+        Mat32f c(M, N);
+        Fill(a); Fill(b); Fill(c);
+
+        double t = 0;
+        uint64_t n = 0;
+        while (t < time)
+        {
+            double start = Time();
+            n += PerfMacroBf16L3_2x2_v2(M, N, K, a.p, b.p, c.p, N, 0);
+            t += Time() - start;
+        }
+        double gflops = double(n) / t / double(1024 * 1024 * 1024);
+        std::cout << gflops << " GFLOPS. V2 " << M <<"-" << N << "-" << K << "; size (A + B + C) = " << (K * M + K * N /*+ M * N*/) * 2 / 1024 << " kB." << std::endl;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
     inline uint64_t PerfMicroBf16L3_2x1(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
     {
         if (zero)
@@ -942,25 +1054,25 @@ namespace Amx
         //    TestLoadCompact<2>(i * 7, time);
         //}
 
-        for (int i = 4; i < 30000; i *= 2)
-        {
-            TestPerfBf16L1<0 | 0>(i * 2, time);
-            TestPerfBf16L1<0 | 0>(i * 3, time);
-        }
+        //for (int i = 4; i < 30000; i *= 2)
+        //{
+        //    TestPerfBf16L1<0 | 0>(i * 2, time);
+        //    TestPerfBf16L1<0 | 0>(i * 3, time);
+        //}
 
-        for (int i = 4; i < 30000; i *= 2)
-        {
-            TestPerfBf16L1<1 | 8>(i * 2, time);
-            TestPerfBf16L1<1 | 8>(i * 3, time);
-        }
+        //for (int i = 4; i < 30000; i *= 2)
+        //{
+        //    TestPerfBf16L1<1 | 8>(i * 2, time);
+        //    TestPerfBf16L1<1 | 8>(i * 3, time);
+        //}
 
-        for (int i = 4; i < 30000; i *= 2)
-        {
-            TestPerfBf16L1<2 | 8>(i * 2, time);
-            TestPerfBf16L1<2 | 8>(i * 3, time);
-        }
+        //for (int i = 4; i < 30000; i *= 2)
+        //{
+        //    TestPerfBf16L1<2 | 8>(i * 2, time);
+        //    TestPerfBf16L1<2 | 8>(i * 3, time);
+        //}
 
-        TestPerfBf16L1_2x2(time);
+        //TestPerfBf16L1_2x2(time);
         //TestPerfBf16L1_2x1(time);
         //TestPerfBf16L1_1x2(time);
         //TestPerfBf16L1_1x1(time);
@@ -974,8 +1086,44 @@ namespace Amx
         //    TestPerfBf16L3(time, k * 6);
         //    TestPerfBf16L3(time, k * 7);
         //}
-        
-        TestPerfBf16L3_2x2(time);
+
+        //TestPerfBf16L3_2x2(time);
+
+        //for (int i = 1; i < 1000; i *= 2)
+        //{
+        //    TestPerfBf16L3_2x2_v2(time, 512, i * 32);
+        //    if (i > 1)
+        //        TestPerfBf16L3_2x2_v2(time, 512, i * 32);
+        //}
+
+        //for (int i = 1; i < 1000; i *= 2)
+        //{
+        //    TestPerfBf16L3_2x2_v2(time, 768, i * 32);
+        //    if (i > 1)
+        //        TestPerfBf16L3_2x2_v2(time, 768, i * 32);
+        //}
+
+        //for (int i = 1; i < 1000; i *= 2)
+        //{
+        //    TestPerfBf16L3_2x2_v2(time, 1024, i * 32);
+        //    if (i > 1)
+        //        TestPerfBf16L3_2x2_v2(time, 1024, i * 32);
+        //}
+
+        //for (int i = 1; i < 1000; i *= 2)
+        //{
+        //    for (int j = 1; j < 1000; j *= 2)
+        //    {
+        //        TestPerfBf16L3_2x2_v2(time, i * 32, j * 32);
+        //        if (i > 1)
+        //            TestPerfBf16L3_2x2_v2(time, i * 48, j * 32);
+        //        if (j > 1)
+        //            TestPerfBf16L3_2x2_v2(time, i * 32, j * 48);
+        //        if (i > 1 && j > 1)
+        //            TestPerfBf16L3_2x2_v2(time, i * 48, j * 48);
+        //    }
+        //}
+
         //TestPerfBf16L3_2x1(time);
         //TestPerfBf16L3_1x2(time);
 
@@ -986,6 +1134,24 @@ namespace Amx
         //TestPerfBf16L3_1xX<5>(time);
         //TestPerfBf16L3_1xX<6>(time);
     }
+
+    void WarmUpCpu(double time)
+    {
+        std::cout << "Warm up CPU:" << std::endl;
+        PrintCurrentFrequency();
+        double t = 0;
+        Amx::TileConf conf;
+        _tile_loadconfig(&conf);
+        while (t < time)
+        {
+            double start = Time();
+            Amx::PerfBf16L0(1024*1024, 32);
+            t += Time() - start;
+        }
+        PrintCurrentFrequency();
+    }
 }
+
+
 
 

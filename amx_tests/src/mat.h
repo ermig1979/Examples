@@ -8,7 +8,7 @@ template<class T> struct Mat
     int m, n;
 
     Mat(int _m, int _n) : m(_m), n(_n), p((T*)_mm_malloc(_m * _n * sizeof(T), 64)) {}
-    ~Mat() { _mm_free(p); }
+    ~Mat() { _mm_free(p); p = 0; m = 0; n = 0; }
     int Size() const { return m * n; }
 };
 

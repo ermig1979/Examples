@@ -72,6 +72,8 @@ namespace Amx
     void TestMaxBf16L0(double time = 1.0);
 
     void TestPerf(double time = 1.0);
+
+    void WarmUpCpu(double time = 1.0);
 }
 
 
