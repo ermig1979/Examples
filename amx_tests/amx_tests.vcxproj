@@ -21,7 +21,6 @@
     <ClCompile Include="src\gemm_amx.cpp" />
     <ClCompile Include="src\gemm_fp32.cpp" />
     <ClCompile Include="src\test_gemm.cpp" />
-    <ClCompile Include="src\shorts.cpp" />
     <ClCompile Include="src\test_amx.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

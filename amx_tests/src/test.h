@@ -16,13 +16,6 @@ namespace Base
 
 //-------------------------------------------------------------------------------------------------
 
-namespace Avx2
-{
-	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);
-}
-
-//-------------------------------------------------------------------------------------------------
-
 namespace Avx512bw
 {
 	void Gemm32f(int M, int N, int K, const float* A, const float* B, float* C);

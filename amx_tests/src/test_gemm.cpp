@@ -115,10 +115,6 @@ void TestGemm16b(int M, int N, int K, const std::string& desc, Gemm16bPtr gemm, 
 
 bool TestGemm(int M, int N, int K)
 {
-    //TEST_GEMM32F(M, N, K, Base::Gemm32f, Avx512bw::Gemm32f);
-
-    //TEST_GEMM32F(M, N, K, Avx2::Gemm32f, Avx512bw::Gemm32f);
-
     TEST_GEMM32F(M, N, K, Avx512bw::Gemm32f, Amx::GemmFunc);
 
     //TEST_GEMM32F(M, N, K, Base::Gemm16b, Avx512bw::Gemm32f);

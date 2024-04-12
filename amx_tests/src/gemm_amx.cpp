@@ -99,8 +99,17 @@ namespace Amx
 
     inline void MoveToMemory(const float* ptr, size_t stride, size_t count)
     {
-        for (int i = 0; i < count; ++i)
-            _mm_prefetch((const char*)(ptr + i * stride), _MM_HINT_NTA);
+        for (int i = 0; i < count; i += 8, ptr += 256)
+        {
+            _mm_prefetch((const char*)(ptr + 0 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 1 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 2 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 3 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 4 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 5 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 6 * 32), _MM_HINT_NTA);
+            _mm_prefetch((const char*)(ptr + 7 * 32), _MM_HINT_NTA);
+        }
     }
 
     void GemmMicro(int K, const uint16_t* A0, const uint16_t* A1,
@@ -144,14 +153,32 @@ namespace Amx
 
     inline void MoveToL2Cache(const uint16_t* ptr, size_t count)
     {
-        for (int i = 0; i < count; ++i)
-            _mm_prefetch((const char*)(ptr + i * 32), _MM_HINT_T1);
+        for (int i = 0; i < count; i += 8, ptr += 256)
+        {
+            _mm_prefetch((const char*)(ptr + 0 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 1 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 2 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 3 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 4 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 5 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 6 * 32), _MM_HINT_T1);
+            _mm_prefetch((const char*)(ptr + 7 * 32), _MM_HINT_T1);
+        }
     }
 
     inline void MoveToL3Cache(const uint16_t* ptr, size_t count)
     {
-        for (int i = 0; i < count; ++i)
-            _mm_prefetch((const char*)(ptr + i * 32), _MM_HINT_T2);
+        for (int i = 0; i < count; i += 8, ptr += 256)
+        {
+            _mm_prefetch((const char*)(ptr + 0 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 1 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 2 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 3 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 4 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 5 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 6 * 32), _MM_HINT_T2);
+            _mm_prefetch((const char*)(ptr + 7 * 32), _MM_HINT_T2);
+        }
     }
 
     void ConvertA(int K, const float* A, int lda, uint16_t* buf)
@@ -182,11 +209,11 @@ namespace Amx
                 ConvertB_v2(K, B + j + 0, ldb, B0);
                 ConvertB_v2(K, B + j + 16, ldb, B1);
             }
-            else
-            {
-                //MoveToL2Cache(B0 + K * 32, K);
-                //MoveToL2Cache(B1 + K * 32, K);
-            }
+            //else
+            //{
+            //    MoveToL2Cache(B0 + K * 32, K);
+            //    MoveToL2Cache(B1 + K * 32, K);
+            //}
             for (int i = 0; i < M; i += 32)
             {
                 uint16_t* A0 = bufA + i * K;
@@ -196,6 +223,11 @@ namespace Amx
                     ConvertA(K, A + i * lda, lda, A0);
                     ConvertA(K, A + (i + 16) * lda, lda, A1);
                 }
+                //else
+                //{
+                //    MoveToL2Cache(A0 + K * 32, K);
+                //    MoveToL2Cache(A1 + K * 32, K);
+                //}
                 GemmMicro(K, A0, A1, B0, B1, C + i * ldc + j, ldc, update);
             }
             //MoveToL3Cache(B0, K);
