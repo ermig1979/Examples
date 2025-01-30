@@ -7,10 +7,17 @@ namespace Amx
     {
         for(int i = 0; i < count; i += step)
         {
+#if 0
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_dpbf16ps(0, 4, 7);
+            _tile_dpbf16ps(0, 5, 6);
+            _tile_dpbf16ps(0, 5, 7);
+#else
             _tile_dpbf16ps(0, 4, 6);
             _tile_dpbf16ps(1, 4, 7);
             _tile_dpbf16ps(2, 5, 6);
             _tile_dpbf16ps(3, 5, 7);
+#endif
         }
         return count * uint64_t(2 * 16 * 16) * 4;
     }
@@ -99,18 +106,44 @@ namespace Amx
             _tile_loadd(2, C + 2 * 1024, 64);
             _tile_loadd(3, C + 3 * 1024, 64);
         }
-        for (int i = 0; i < count; i++)
+        if (flags & 16)
         {
-            _tile_loadd(4, A0 + i * 1024, 64);
-            _tile_loadd(5, A1 + i * 1024, 64);
-            //_tile_loadd(4, A0 + i * 64, count * 64);
+            int i = 0, count1 = count - 1;
+            _tile_stream_loadd(4, A0 + i * 1024, 64);
             _tile_loadd(6, B0 + i * 1024, 64);
-            _tile_loadd(7, B1 + i * 1024, 64);
-            _tile_dpbf16ps(0, 4, 6);
-            _tile_dpbf16ps(1, 4, 7);
-            //_tile_loadd(5, A1 + i * 64, count * 64);
-            _tile_dpbf16ps(2, 5, 6);
-            _tile_dpbf16ps(3, 5, 7);
+            for (; i < count1; i++)
+            {
+                _tile_loadd(7, B1 + i * 1024, 64);
+                _tile_stream_loadd(5, A1 + i * 1024, 64);
+                _tile_dpbf16ps(0, 4, 6);
+                _tile_dpbf16ps(1, 4, 7);
+                _tile_stream_loadd(4, A0 + i * 1024 + 1024, 64);
+                _tile_dpbf16ps(2, 5, 6);
+                _tile_loadd(6, B0 + i * 1024 + 1024, 64);
+                _tile_dpbf16ps(3, 5, 7);
+            }
+            {
+                _tile_loadd(7, B1 + i * 1024, 64);
+                _tile_stream_loadd(5, A1 + i * 1024, 64);
+                _tile_dpbf16ps(0, 4, 6);
+                _tile_dpbf16ps(1, 4, 7);
+                _tile_dpbf16ps(2, 5, 6);
+                _tile_dpbf16ps(3, 5, 7);
+            }        
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
+            {
+                _tile_loadd(4, A0 + i * 1024, 64);
+                _tile_loadd(5, A1 + i * 1024, 64);
+                _tile_loadd(6, B0 + i * 1024, 64);
+                _tile_loadd(7, B1 + i * 1024, 64);
+                _tile_dpbf16ps(0, 4, 6);
+                _tile_dpbf16ps(1, 4, 7);
+                _tile_dpbf16ps(2, 5, 6);
+                _tile_dpbf16ps(3, 5, 7);
+            }
         }
         if (flags & 8)
         {
@@ -1060,10 +1093,16 @@ namespace Amx
         //    TestPerfBf16L1<0 | 0>(i * 3, time);
         //}
 
-        //for (int i = 4; i < 30000; i *= 2)
+        //for (int i = 1; i < 30000; i *= 2)
         //{
         //    TestPerfBf16L1<1 | 8>(i * 2, time);
         //    TestPerfBf16L1<1 | 8>(i * 3, time);
+        //}
+
+        //for (int i = 1; i < 30000; i *= 2)
+        //{
+        //    TestPerfBf16L1<1 | 8 | 16>(i * 2, time);
+        //    TestPerfBf16L1<1 | 8 | 16>(i * 3, time);
         //}
 
         //for (int i = 4; i < 30000; i *= 2)

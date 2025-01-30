@@ -461,7 +461,7 @@ namespace Amx
         int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
         int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
         int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
-        Mat16b bufA(K, M);
+        Mat16b bufA(M, K);
         for (int j = 0; j < N; j += mN)
         {
             int dN = std::min(N, j + mN) - j;
@@ -483,6 +483,236 @@ namespace Amx
                     Macro16b(dM, dN, dK, pA + k * M + i * mK, mK, B, C + i * N + j, N, k == 0);
                 }
                 B += dN * dK;
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void ConvertBV2(int N, int K, int microN, const float* src, uint16_t* dst)
+    {
+        for (int j = 0; j < N; j += microN)
+        {
+            for (int k = 0; k < K; k += 2)
+            {
+                for (int m = 0; m < microN; m += 16)
+                    ConvertB(src + k * N + m, N, dst + k * microN + K * j + m * 2);
+            }
+            src += microN;
+        }
+    }
+
+    void Micro16bV2(int K, const uint16_t* A, int lda, const uint16_t* B, int ldb, float* C, int ldc, int zero)
+    {
+        TileConf conf;
+        int bst = ldb * 2 * 2;
+        _tile_loadconfig(&conf);
+        if (zero)
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        else
+        {
+            _tile_stream_loadd(0, C + 0, ldc * 4);
+            _tile_stream_loadd(1, C + 16, ldc * 4);
+            _tile_stream_loadd(2, C + 16 * ldc + 0, ldc * 4);
+            _tile_stream_loadd(3, C + 16 * ldc + 16, ldc * 4);
+        }
+        {
+            size_t K32 = K - 32, k = 0;
+            _tile_stream_loadd(4, A + k, lda * 2);
+            _tile_loadd(6, B + k * ldb + 0, bst);
+            for (; k < K32; k += 32)
+            {
+                _tile_loadd(7, B + k * ldb + 32, bst);
+                _tile_stream_loadd(5, A + k + lda * 16, lda * 2);
+                _tile_dpbf16ps(0, 4, 6);
+                _tile_dpbf16ps(1, 4, 7);
+                _tile_stream_loadd(4, A + k + 32, lda * 2);
+                _tile_dpbf16ps(2, 5, 6);
+                _tile_loadd(6, B + (k + 32) * ldb, bst);
+                _tile_dpbf16ps(3, 5, 7);
+            }
+            {
+                _tile_loadd(7, B + k * ldb + 32, bst);
+                _tile_stream_loadd(5, A + k + lda * 16, lda * 2);
+                _tile_dpbf16ps(0, 4, 6);
+                _tile_dpbf16ps(1, 4, 7);
+                _tile_dpbf16ps(2, 5, 6);
+                _tile_dpbf16ps(3, 5, 7);
+            }
+        }
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_stored(2, C + 16 * ldc + 0, ldc * 4);
+        _tile_stored(3, C + 16 * ldc + 16, ldc * 4);
+    }
+
+    void Macro16bV2(int M, int N, int K, const uint16_t* A, int lda, const uint16_t* B, int ldb, int miN, float* C, int ldc, int zero)
+    {
+        for (int j = 0; j < N; j += miN)
+        {
+            for(int jj = 0; jj < miN; jj += 32)
+                for (int i = 0; i < M; i += 32)
+                    Micro16bV2(K, A + i * lda, lda, B + j * ldb + jj * 2, miN, C + i * ldc + j + jj, ldc, zero);
+        }
+    }
+
+    void Gemm16bV2(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024 / 2, L3 = 45 * 1024 * 1024 / 10;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
+        int mN = std::min(L3 / 2 / mK, N) / 32 * 32;
+        Mat16b bufA(M, K);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    uint16_t* pA = mK < K ? bufA.p : (uint16_t*)A;
+                    if (j == 0 && k == 0 && mK < K)
+                    {
+                        for (int k = 0; k < K; k += mK)
+                        {
+                            int dK = std::min(K, k + mK) - k;
+                            ReorderA(A + i * K + k, K, dM, dK, bufA.p + k * M + i * mK, mK);
+                        }
+                    }
+                    Macro16bV2(dM, dN, dK, pA + k * M + i * mK, mK, B + j * K + k * 32, K, 32, C + i * N + j, N, k == 0);
+                }
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void Gemm16bV3(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024 / 2, L3 = 45 * 1024 * 1024 / 10;
+        int mK = std::min(L1 / 2 / 32, K) / 32 * 32;
+        int mM = std::min(L2 / 2 / mK, M) / 32 * 32;
+        int mN = std::min(L3 / 2 / mK, N) / 64 * 64;
+        Mat16b bufA(M, K);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    uint16_t* pA = mK < K ? bufA.p : (uint16_t*)A;
+                    if (j == 0 && k == 0 && mK < K)
+                    {
+                        for (int k = 0; k < K; k += mK)
+                        {
+                            int dK = std::min(K, k + mK) - k;
+                            ReorderA(A + i * K + k, K, dM, dK, bufA.p + k * M + i * mK, mK);
+                        }
+                    }
+                    Macro16bV2(dM, dN, dK, pA + k * M + i * mK, mK, B + j * K + k * 64, K, 64, C + i * N + j, N, k == 0);
+                }
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    void Micro16bV4(int K, const uint16_t* A, int lda, const uint16_t* B, float* C, int ldc, int zero)
+    {
+        TileConf conf;
+        int bst = 256;
+        _tile_loadconfig(&conf);
+        if (zero)
+        {
+            _tile_zero(0);
+            _tile_zero(1);
+            _tile_zero(2);
+            _tile_zero(3);
+        }
+        else
+        {
+            _tile_stream_loadd(0, C + 0, ldc * 4);
+            _tile_stream_loadd(1, C + 16, ldc * 4);
+            _tile_stream_loadd(2, C + 32, ldc * 4);
+            _tile_stream_loadd(3, C + 48, ldc * 4);
+        }
+        _tile_stream_loadd(4, A, lda * 2);
+        for (int k = 0; k < K;)
+        {
+            _tile_stream_loadd(5, A + k + 32, lda * 2);
+            _tile_loadd(6, B + k * 64 + 0, bst);
+            _tile_loadd(7, B + k * 64 + 32, bst);
+            _tile_dpbf16ps(0, 4, 6);
+            _tile_loadd(6, B + k * 64 + 64, bst);
+            _tile_dpbf16ps(1, 4, 7);
+            _tile_loadd(7, B + k * 64 + 96, bst);
+            _tile_dpbf16ps(2, 4, 6);
+            _tile_dpbf16ps(3, 4, 7);
+            k += 32;
+
+            _tile_stream_loadd(4, A + k + 32, lda * 2);
+            _tile_loadd(6, B + k * 64 + 0, bst);
+            _tile_loadd(7, B + k * 64 + 32, bst);
+            _tile_dpbf16ps(0, 5, 6);
+            _tile_loadd(6, B + k * 64 + 64, bst);
+            _tile_dpbf16ps(1, 5, 7);
+            _tile_loadd(7, B + k * 64 + 96, bst);
+            _tile_dpbf16ps(2, 5, 6);
+            _tile_dpbf16ps(3, 5, 7);
+            k += 32;
+        }
+        _tile_stored(0, C + 0, ldc * 4);
+        _tile_stored(1, C + 16, ldc * 4);
+        _tile_stored(2, C + 32, ldc * 4);
+        _tile_stored(3, C + 48, ldc * 4);
+    }
+
+    void Macro16bV4(int M, int N, int K, const uint16_t* A, int lda, const uint16_t* B, int ldb, float* C, int ldc, int zero)
+    {
+        for (int j = 0; j < N; j += 64)
+        {
+            for (int i = 0; i < M; i += 16)
+                Micro16bV4(K, A + i * lda, lda, B + j * ldb, C + i * ldc + j, ldc, zero);
+        }
+    }
+
+    void Gemm16bV4(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C)
+    {
+        const int L1 = 48 * 1024, L2 = 2 * 1024 * 1024 / 2, L3 = 45 * 1024 * 1024 / 10;
+        int mK = std::min(L1 / 2 / 64, K) / 64 * 64;
+        int mM = std::min(L2 / 2 / mK, M) / 16 * 16;
+        int mN = std::min(L3 / 2 / mK, N) / 64 * 64;
+        Mat16b bufA(M, K);
+        for (int j = 0; j < N; j += mN)
+        {
+            int dN = std::min(N, j + mN) - j;
+            for (int k = 0; k < K; k += mK)
+            {
+                int dK = std::min(K, k + mK) - k;
+                for (int i = 0; i < M; i += mM)
+                {
+                    int dM = std::min(M, i + mM) - i;
+                    uint16_t* pA = mK < K ? bufA.p : (uint16_t*)A;
+                    if (j == 0 && k == 0 && mK < K)
+                    {
+                        for (int k = 0; k < K; k += mK)
+                        {
+                            int dK = std::min(K, k + mK) - k;
+                            ReorderA(A + i * K + k, K, dM, dK, bufA.p + k * M + i * mK, mK);
+                        }
+                    }
+                    Macro16bV4(dM, dN, dK, pA + k * M + i * mK, mK, B + j * K + k * 64, K, C + i * N + j, N, k == 0);
+                }
             }
         }
     }

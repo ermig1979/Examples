@@ -78,9 +78,9 @@ void TestGemm32f16b(int M, int N, int K, const std::string& desc, Gemm32f16bPtr 
 
 //-------------------------------------------------------------------------------------------------
 
-void TestGemm16b(int M, int N, int K, const std::string& desc, Gemm16bPtr gemm, Gemm32fPtr control, double time = 1.0)
+void TestGemm16b(int M, int N, int K, const std::string& desc, int microN, ConvertBPtr convertB, Gemm16bPtr gemm, Gemm32fPtr control, double time = 1.0)
 {
-    std::cout << "Test " << desc << " : ";
+    std::cout << "Test " << desc << " : "  << std::flush;
 
     Mat32f a(M, K), b(K, N), c0(M, N), c1(M, N);
     srand(0);
@@ -91,7 +91,7 @@ void TestGemm16b(int M, int N, int K, const std::string& desc, Gemm16bPtr gemm, 
     Mat16b _a(M, K);
     Amx::ConvertA(M, K, a.p, _a.p);
     Mat16b _b(K, N);
-    Amx::ConvertB(N, K, 32, b.p, _b.p);
+    convertB(N, K, microN, b.p, _b.p);
 
     control(a.m, b.n, a.n, a.p, b.p, c0.p);
     double t = 0;
@@ -109,7 +109,7 @@ void TestGemm16b(int M, int N, int K, const std::string& desc, Gemm16bPtr gemm, 
     std::cout << std::setprecision(3) << std::fixed << gflops << " GFLOPS; e = " << d.d.Abs() << std::endl;
 }
 
-#define TEST_GEMM16B(M, N, K, gemm, control) TestGemm16b(M, N, K, ToStr(#gemm, 20), gemm, control)
+#define TEST_GEMM16B(M, N, K, microN, convertB, gemm, control) TestGemm16b(M, N, K, ToStr(#gemm, 20), microN, convertB, gemm, control)
 
 //-------------------------------------------------------------------------------------------------
 
@@ -129,7 +129,13 @@ bool TestGemm(int M, int N, int K)
 
     TEST_GEMM32F16B(M, N, K, Amx::Gemm32f16bV3, 16, Avx512bw::Gemm32f);
 
-    TEST_GEMM16B(M, N, K, Amx::Gemm16b, Avx512bw::Gemm32f);
+    TEST_GEMM16B(M, N, K, 32, Amx::ConvertB, Amx::Gemm16b, Avx512bw::Gemm32f);
+
+    TEST_GEMM16B(M, N, K, 32, Amx::ConvertBV2, Amx::Gemm16bV2, Avx512bw::Gemm32f);
+
+    TEST_GEMM16B(M, N, K, 64, Amx::ConvertBV2, Amx::Gemm16bV3, Avx512bw::Gemm32f);
+
+    TEST_GEMM16B(M, N, K, 64, Amx::ConvertBV2, Amx::Gemm16bV4, Avx512bw::Gemm32f);
 
     return true;
 }

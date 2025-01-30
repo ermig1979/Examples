@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
     if (argc > 2) N = K = atoi(argv[2]);
     if (argc > 3) K = atoi(argv[3]);
 
-    if (M % 96 || N % 32 || K % 32)
+    if (M % 32 || N % 32 || K % 32)
     {
         std::cout << "Wrong input sizes!" << std::endl;
         return 1;
