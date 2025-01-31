@@ -137,6 +137,8 @@ bool TestGemm(int M, int N, int K)
 
     TEST_GEMM16B(M, N, K, 64, Amx::ConvertBV2, Amx::Gemm16bV4, Avx512bw::Gemm32f);
 
+    TEST_GEMM16B(M, N, K, 32, Amx::ConvertBV2, Amx::Gemm16bV5, Avx512bw::Gemm32f);
+
     return true;
 }
 

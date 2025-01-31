@@ -43,6 +43,7 @@ namespace Amx
 	void Gemm16bV2(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C);
 	void Gemm16bV3(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C);
 	void Gemm16bV4(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C);
+	void Gemm16bV5(int M, int N, int K, const uint16_t* A, const uint16_t* B, float* C);
 }
 
 //-------------------------------------------------------------------------------------------------

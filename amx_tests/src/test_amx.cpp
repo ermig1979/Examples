@@ -1093,7 +1093,7 @@ namespace Amx
         //    TestPerfBf16L1<0 | 0>(i * 3, time);
         //}
 
-        //for (int i = 1; i < 30000; i *= 2)
+        //for (int i = 4; i < 1000; i *= 2)
         //{
         //    TestPerfBf16L1<1 | 8>(i * 2, time);
         //    TestPerfBf16L1<1 | 8>(i * 3, time);
