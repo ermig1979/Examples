@@ -8,5 +8,7 @@ int main(int argc, char* argv[])
 
     TestAdd2Ints();
 
+    TestAdd2Fp32Vecs();
+
     return 0;
 }

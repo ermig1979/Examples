@@ -36,6 +36,9 @@ inline __attribute__((always_inline)) double time()
 }
 #endif
 
+//--------------------------------------------------------------------------------------------------
 
 bool TestAdd2Ints();
+
+bool TestAdd2Fp32Vecs();
 
