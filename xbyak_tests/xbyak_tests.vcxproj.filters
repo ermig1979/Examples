@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="tests\xbyak_tests.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="xbyak\xbyak.h">
+      <Filter>xbyak</Filter>
+    </ClInclude>
+    <ClInclude Include="xbyak\xbyak_bin2hex.h">
+      <Filter>xbyak</Filter>
+    </ClInclude>
+    <ClInclude Include="xbyak\xbyak_mnemonic.h">
+      <Filter>xbyak</Filter>
+    </ClInclude>
+    <ClInclude Include="xbyak\xbyak_util.h">
+      <Filter>xbyak</Filter>
+    </ClInclude>
+    <ClInclude Include="tests\defs.h">
+      <Filter>tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="xbyak">
+      <UniqueIdentifier>{7015cc99-3af6-43ab-9e0f-c0d3eac6619e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{74bd4a5c-4e3c-4bf0-96fa-089417146e1b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
