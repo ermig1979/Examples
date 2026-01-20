@@ -6,7 +6,7 @@ typedef void (*GemmPtr)(int M, int N, int K, const float* A, const float* B, flo
 
 int S = 96;
 int M = S, N = S, K = S, L = 0;
-double TIME = 0.1;
+double TIME = 0.9;
 
 bool Test(GemmPtr gemm, const std::string& desc, const Buf& a, const Buf& b, const Buf& control)
 {
@@ -217,20 +217,17 @@ public:
         resetSize();
 
         const Xbyak::Reg64& K = rdi;
-        const Xbyak::Reg64& A = rsi;
-        const Xbyak::Reg64& lda = rdx;
+        _A = rsi;
+        _lda = rdx;
         const Xbyak::Reg64& step = rcx;
-        const Xbyak::Reg64& B = r8;
-        const Xbyak::Reg64& ldb = r9;
-
+        _B = r8;
+        _ldb = r9;
         _C = r10;
         _ldc = r11;
 
         mov(_C, ptr[rsp + 0x08]);
-        mov(rax, ptr[rsp + 0x10]);
-        //mov(_ldc, 4);
+        imul(_ldb, _ldb, 4);
         imul(_ldc, ptr[rsp + 0x10], 4);
-        //mov(_ldc, rax)
 
         ResetC();
 
@@ -239,10 +236,8 @@ public:
         cmp(rbx, K);
         jnl("LOOP_END_K_1");
 
-        //vmovss(xmm0, ptr[rdi + rbx * 4]);
-        //vmovss(xmm1, ptr[rsi + rbx * 4]);
-        //vaddps(xmm0, xmm1);
-        //vmovss(ptr[rcx + rbx * 4], xmm0);
+        LoopBody();
+
         add(rbx, 1);
         jmp("LOOP_BEG_K_1");
         L("LOOP_END_K_1");
@@ -255,7 +250,7 @@ public:
     }
 
 private:
-    Xbyak::Reg64 _C, _ldc;
+    Xbyak::Reg64 _A, _lda, _B, _ldb, _C, _ldc;
 
     void ResetC()
     {
@@ -267,12 +262,27 @@ private:
         }
     }
 
+    void LoopBody()
+    {
+        Xbyak::Ymm b0(_m * 2 + 0), b1(_m * 2 + 1), a0(_m * 2 + 2), a1(_m * 2 + 3);
+        vmovups(b0, ptr[_B + 00]);
+        vmovups(b1, ptr[_B + 32]);
+        for (int i = 0; i < _m; ++i)
+        {
+            Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
+            vbroadcastss(a0, ptr[_A + i * 4]);
+            vfmadd231ps(c0, b0, a0);
+            vfmadd231ps(c1, b1, a0);
+        }
+        add(_B, _ldb);
+        add(_A, 6 * 4);
+    }
+
     void StoreC()
     {
         for (int i = 0; i < _m; ++i)
         {
             Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
-            //std::cout << "_C " << _C.toString() << std::endl;
             vmovups(ptr[_C + 00], c0);
             vmovups(ptr[_C + 32], c1);
             add(_C, _ldc);
