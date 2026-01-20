@@ -216,9 +216,64 @@ public:
     {
         resetSize();
 
+        const Xbyak::Reg64& K = rdi;
+        const Xbyak::Reg64& A = rsi;
+        const Xbyak::Reg64& lda = rdx;
+        const Xbyak::Reg64& step = rcx;
+        const Xbyak::Reg64& B = r8;
+        const Xbyak::Reg64& ldb = r9;
+
+        _C = r10;
+        _ldc = r11;
+
+        mov(_C, ptr[rbp + 0x10]);
+        mov(_ldc, ptr[rbp + 0x18]);
+
+        ResetC();
+
+        xor_(rbx, rbx);
+        L("LOOP_BEG_K_1");
+        cmp(rbx, K);
+        jnl("LOOP_END_K_1");
+
+        //vmovss(xmm0, ptr[rdi + rbx * 4]);
+        //vmovss(xmm1, ptr[rsi + rbx * 4]);
+        //vaddps(xmm0, xmm1);
+        //vmovss(ptr[rcx + rbx * 4], xmm0);
+        add(rbx, 1);
+        jmp("LOOP_BEG_K_1");
+        L("LOOP_END_K_1");
+
+        StoreC();
+
         ret();
 
         return true;
+    }
+
+private:
+    Xbyak::Reg64 _C, _ldc;
+
+    void ResetC()
+    {
+        for (int i = 0; i < _m; ++i)
+        {
+            Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
+            vxorps(c0, c0, c0);
+            vxorps(c1, c1, c1);
+        }
+    }
+
+    void StoreC()
+    {
+        for (int i = 0; i < _m; ++i)
+        {
+            Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
+            //std::cout << "_C " << _C.toString() << std::endl;
+            vmovups(ptr[_C + 00], c0);
+            //vmovups(ptr[_C + 32], c1);
+            //add(_C, _ldc);
+        }
     }
 };
 
@@ -233,6 +288,8 @@ void MacroV2(int M, int N, int K, const float* A, const float* B, int ldb, float
     }
 }
 
+int echo = 1;
+
 void GemmV2(int M, int N, int K, const float* A, const float* B, float* C)
 {
     const int L1 = 32 * 1024, L2 = 256 * 1024, L3 = 2 * 1024 * 1024;
@@ -246,7 +303,12 @@ void GemmV2(int M, int N, int K, const float* A, const float* B, float* C)
 
     Micro6x16Jit micro6x16Jit(6, 16);
     micro6x16Jit.Generate();
-    //micro6x16 = micro6x16Jit.getCode<Micro6x16Ptr>();
+    if (echo)
+    {
+        std::cout << "Micro6x16 size is " << micro6x16Jit.getSize() << std::endl;
+        echo = 0;
+    }
+    micro6x16 = micro6x16Jit.getCode<Micro6x16Ptr>();
 
     for (int j = 0; j < N; j += mN)
     {
