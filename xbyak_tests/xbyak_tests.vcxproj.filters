@@ -4,6 +4,15 @@
     <ClCompile Include="tests\xbyak_tests.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="tests\test_add_2_fp32_vecs.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_add_2_ints.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_sgemm.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="xbyak\xbyak.h">

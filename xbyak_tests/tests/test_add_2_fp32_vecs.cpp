@@ -16,8 +16,6 @@ struct Add2Fp32VecsJit : Xbyak::CodeGenerator
 public:
     Add2Fp32VecsJit()
     {
-        //Xbyak::util::Cpu cpu;
-        //bool avx512 = cpu.getXfeature() & Xbyak::util::Cpu::tAVX512BW;
     }
 
     bool Generate()
@@ -78,14 +76,10 @@ bool TestAdd2Fp32Vecs()
 {
     std::cout << " TestAdd2Fp32Vecs:";
 
-    const size_t size = 1023;
-    float a[size], b[size], cRef[size], cJit[size];
-
-    for (size_t i = 0; i < size; ++i)
-    {
-        a[i] = (float)i;
-        b[i] = (float)(1 - i);
-    }
+    const size_t n = 1023;
+    Buf a(n), b(n), cRef(n), cJit(n);
+    Init(a);
+    Init(b);
 
     Add2Fp32VecsPtr add2Fp32VecsRef = Add2Fp32VecsRef;
 
@@ -95,19 +89,13 @@ bool TestAdd2Fp32Vecs()
 
     Add2Fp32VecsPtr add2Fp32VecsJit = add2Fp32VecsGen.getCode<Add2Fp32VecsPtr>();
 
-    add2Fp32VecsRef(a, b, size, cRef);
+    add2Fp32VecsRef(a.p, b.p, n, cRef.p);
 
-    add2Fp32VecsJit(a, b, size, cJit);
+    add2Fp32VecsJit(a.p, b.p, n, cJit.p);
 
-    float errMax = 0.1f;
-    for (size_t i = 0; i < size; ++i)
-    {
-        if (::fabs(cRef[i] - cJit[i]) > errMax)
-        {
-            std::cout << " Error at " << i << " : " << std::fixed << std::setprecision(2) << cRef[i] << " != " << cJit[i] << "!" << std::endl;
-            return false;
-        }
-    }
+    if (!Check(cRef, cJit, "", 0.001f))
+        return false;
+
     std::cout << " OK." << std::endl;
     return true;
 }
