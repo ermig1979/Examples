@@ -226,8 +226,11 @@ public:
         _C = r10;
         _ldc = r11;
 
-        mov(_C, ptr[rbp + 0x10]);
-        mov(_ldc, ptr[rbp + 0x18]);
+        mov(_C, ptr[rsp + 0x08]);
+        mov(rax, ptr[rsp + 0x10]);
+        //mov(_ldc, 4);
+        imul(_ldc, ptr[rsp + 0x10], 4);
+        //mov(_ldc, rax)
 
         ResetC();
 
@@ -271,8 +274,8 @@ private:
             Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
             //std::cout << "_C " << _C.toString() << std::endl;
             vmovups(ptr[_C + 00], c0);
-            //vmovups(ptr[_C + 32], c1);
-            //add(_C, _ldc);
+            vmovups(ptr[_C + 32], c1);
+            add(_C, _ldc);
         }
     }
 };
