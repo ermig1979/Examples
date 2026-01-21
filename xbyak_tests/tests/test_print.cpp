@@ -11,7 +11,11 @@ public:
         mov(rax, 0);
         add(rax, 1);
 
+        Print(" rax: %ld ", rax);
+
         Print(" jit_message ");
+
+        Print(" rax: %ld ", rax);
 
         ret();
     }
@@ -31,6 +35,27 @@ private:
         pop(rdi);
         pop(rsi);
         pop(rax);
+    }
+
+    void Print(const char* format, const Xbyak::Reg64 &reg)
+    {
+        push(reg);        
+        push(rax);
+        push(rdi);
+        push(rsi);
+        push(rdx);
+        push(rbp);
+        mov(rsi, reg);
+        mov(rdi, (size_t)format);
+        mov(rdx, 0);
+        mov(rax, (size_t)printf);
+        call(rax);
+        pop(rbp);
+        pop(rdx);
+        pop(rsi);
+        pop(rdi);
+        pop(rax);
+        pop(reg);
     }
 };
 
