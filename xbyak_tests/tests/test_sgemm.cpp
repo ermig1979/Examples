@@ -198,21 +198,36 @@ void GemmV1(int M, int N, int K, const float* A, const float* B, float* C)
 
 //--------------------------------------------------------------------------------------------------
 
-typedef void (*Micro6x16Ptr)(int K, const float* A, int lda, int step, const float* B, int ldb, float* C, int ldc);
+typedef void (*MicroPtr)(int K, const float* A, int lda, int step, const float* B, int ldb, float* C, int ldc);
 
-struct Micro6x16Jit : Xbyak::CodeGenerator
+struct MicroJit : Xbyak::CodeGenerator
 {
-    void operator=(const Micro6x16Jit&);
+    void operator=(const MicroJit&);
 
-    int _m, _n;
 public:
-    Micro6x16Jit(int m, int n)
-        : _m(m)
-        , _n(n)
+    MicroJit()
     {
     }
 
-    bool Generate()
+    static int MaxM()
+    {
+#ifdef __AVX512BW__
+        return 6;
+#else
+        return 6;
+#endif
+    }
+
+    static int MaxN()
+    {
+#ifdef __AVX512BW__
+        return 16;
+#else
+        return 16;
+#endif
+    }
+
+    bool Generate(int m, int n)
     {
         resetSize();
 
@@ -229,20 +244,20 @@ public:
         imul(_ldb, _ldb, 4);
         imul(_ldc, ptr[rsp + 0x10], 4);
 
-        ResetC();
+        ResetC(m);
 
         xor_(rbx, rbx);
         L("LOOP_BEG_K_1");
         cmp(rbx, K);
-        jnl("LOOP_END_K_1");
+        jnl("LOOP_END_K_1", T_NEAR);
 
-        LoopBody();
+        LoopBody(m);
 
         add(rbx, 1);
-        jmp("LOOP_BEG_K_1");
+        jmp("LOOP_BEG_K_1", T_NEAR);
         L("LOOP_END_K_1");
 
-        StoreC();
+        StoreC(m);
 
         ret();
 
@@ -252,22 +267,45 @@ public:
 private:
     Xbyak::Reg64 _A, _lda, _B, _ldb, _C, _ldc;
 
-    void ResetC()
+    void ResetC(int m)
     {
-        for (int i = 0; i < _m; ++i)
+#ifdef __AVX512BW__
+        for (int i = 0; i < m; ++i)
+        {
+            Xbyak::Zmm c0(i * 2 + 0), c1(i * 2 + 1);
+            vxorps(c0, c0, c0);
+            //vxorps(c1, c1, c1);
+        }
+#else
+        for (int i = 0; i < m; ++i)
         {
             Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
             vxorps(c0, c0, c0);
             vxorps(c1, c1, c1);
         }
+#endif
     }
 
-    void LoopBody()
+    void LoopBody(int m)
     {
-        Xbyak::Ymm b0(_m * 2 + 0), b1(_m * 2 + 1), a0(_m * 2 + 2), a1(_m * 2 + 3);
+#ifdef __AVX512BW__
+        Xbyak::Zmm b0(m * 2 + 0), b1(m * 2 + 1), a0(m * 2 + 2), a1(m * 2 + 3);
+        vmovups(b0, ptr[_B + 00]);
+        //vmovups(b1, ptr[_B + 32]);
+        for (int i = 0; i < m; ++i)
+        {
+            Xbyak::Zmm c0(i * 2 + 0), c1(i * 2 + 1);
+            vbroadcastss(a0, ptr[_A + i * 4]);
+            vfmadd231ps(c0, b0, a0);
+            //vfmadd231ps(c1, b1, a0);
+        }
+        add(_B, _ldb);
+        add(_A, m * 4);
+#else
+        Xbyak::Ymm b0(m * 2 + 0), b1(m * 2 + 1), a0(m * 2 + 2), a1(m * 2 + 3);
         vmovups(b0, ptr[_B + 00]);
         vmovups(b1, ptr[_B + 32]);
-        for (int i = 0; i < _m; ++i)
+        for (int i = 0; i < m; ++i)
         {
             Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
             vbroadcastss(a0, ptr[_A + i * 4]);
@@ -275,29 +313,41 @@ private:
             vfmadd231ps(c1, b1, a0);
         }
         add(_B, _ldb);
-        add(_A, 6 * 4);
+        add(_A, m * 4);
+#endif
     }
 
-    void StoreC()
+    void StoreC(int m)
     {
-        for (int i = 0; i < _m; ++i)
+#ifdef __AVX512BW__
+        for (int i = 0; i < m; ++i)
+        {
+            Xbyak::Zmm c0(i * 2 + 0), c1(i * 2 + 1);
+            vmovups(ptr[_C + 00], c0);
+            //vmovups(ptr[_C + 32], c1);
+            add(_C, _ldc);
+        }
+#else
+        for (int i = 0; i < m; ++i)
         {
             Xbyak::Ymm c0(i * 2 + 0), c1(i * 2 + 1);
             vmovups(ptr[_C + 00], c0);
             vmovups(ptr[_C + 32], c1);
             add(_C, _ldc);
         }
+#endif
     }
 };
 
-void MacroV2(int M, int N, int K, const float* A, const float* B, int ldb, float* bufB, bool reorderB, float* C, int ldc, Micro6x16Ptr micro6x16)
+void MacroV2(int M, int N, int K, const float* A, const float* B, int ldb, float* bufB, bool reorderB, float* C, int ldc, MicroPtr micro)
 {
+    int MM = MicroJit::MaxM();
     for (int j = 0; j < N; j += 16)
     {
         if (reorderB)
             ReorderB16(K, B + j, ldb, bufB + K * j);
-        for (int i = 0; i < M; i += 6)
-            micro6x16(K, A + i * K, 1, 6, bufB + K * j, 16, C + i * ldc + j, ldc);
+        for (int i = 0; i < M; i += MicroJit::MaxM())
+            micro(K, A + i * K, 1, MM, bufB + K * j, 16, C + i * ldc + j, ldc);
     }
 }
 
@@ -305,23 +355,25 @@ int echo = 1;
 
 void GemmV2(int M, int N, int K, const float* A, const float* B, float* C)
 {
-    const int L1 = 32 * 1024, L2 = 256 * 1024, L3 = 2 * 1024 * 1024;
+    const int L1 = 32 * 1024, L2 = 256 * 1024, L3 = 2 * 1024 * 1024, MM = MicroJit::MaxM(), MN = MicroJit::MaxN();
     int mK = std::min(L1 / 4 / 16, K) / 4 * 4;
-    int mM = std::min(L2 / 4 / mK, M) / 6 * 6;
-    int mN = std::min(L3 / 4 / mK, N) / 16 * 16;
+    int mM = std::min(L2 / 4 / mK, M) / MM * MM;
+    int mN = std::min(L3 / 4 / mK, N) / MN * MN;
     Buf bufB(mN * mK);
     Buf bufA(mK * mM);
 
-    Micro6x16Ptr micro6x16 = Micro6x16;
+    MicroPtr micro = Micro6x16;
 
-    Micro6x16Jit micro6x16Jit(6, 16);
-    micro6x16Jit.Generate();
+    MicroJit microJit;
+    if (echo)
+        std::cout << "Micro " << MM << "x" << MN << std::flush;
+    microJit.Generate(MM, MN);
     if (echo)
     {
-        std::cout << "Micro6x16 size is " << micro6x16Jit.getSize() << std::endl;
+        std::cout << " size is " << microJit.getSize()  << " B." << std::endl;
         echo = 0;
     }
-    micro6x16 = micro6x16Jit.getCode<Micro6x16Ptr>();
+    micro = microJit.getCode<MicroPtr>();
 
     for (int j = 0; j < N; j += mN)
     {
@@ -335,7 +387,7 @@ void GemmV2(int M, int N, int K, const float* A, const float* B, float* C)
                 if (k == 0)
                     InitC(dM, dN, C + i * N + j, N);
                 ReorderA6(A + i * K + k, K, dM, dK, bufA.p);
-                MacroV2(dM, dN, dK, bufA.p, B + k * N + j, N, bufB.p, i == 0, C + i * N + j, N, micro6x16);
+                MacroV2(dM, dN, dK, bufA.p, B + k * N + j, N, bufB.p, i == 0, C + i * N + j, N, micro);
             }
         }
     }
