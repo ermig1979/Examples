@@ -21,6 +21,7 @@
     <ClCompile Include="tests\test_add_2_fp32_vecs.cpp" />
     <ClCompile Include="tests\test_add_2_ints.cpp" />
     <ClCompile Include="tests\test_sgemm.cpp" />
+    <ClCompile Include="tests\test_struct.cpp" />
     <ClCompile Include="tests\xbyak_tests.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -88,5 +88,7 @@ bool TestAdd2Ints();
 
 bool TestAdd2Fp32Vecs();
 
+bool TestStruct();
+
 bool TestSgemm();
 

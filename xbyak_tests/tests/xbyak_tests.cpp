@@ -10,6 +10,8 @@ int main(int argc, char* argv[])
 
     TestAdd2Fp32Vecs();
 
+    TestStruct();
+
     TestSgemm();
 
     return 0;
